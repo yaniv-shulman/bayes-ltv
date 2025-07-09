@@ -1,0 +1,56 @@
+[tool.poetry]
+name = "bayes-ltv"
+version = "0.1.0"
+description = "A Bayesian framework for modeling and estimation of Linear Time-Variant (LTV) systems using Neural Networks and Gaussian Processes."
+authors = ["Yaniv Shulman <yaniv@shulman.info>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/yaniv-shulman/bayes-ltv"
+repository = "https://github.com/yaniv-shulman/bayes-ltv"
+keywords = [
+    "bayesian inference",
+    "system identification",
+    "linear time-variant systems",
+    "ltv",
+    "gaussian process",
+    "bayesian neural networks",
+    "bnn",
+    "variational inference",
+    "signal processing",
+    "time-series analysis"
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Mathematics"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+tensorflow = {version = "~2.16.0", extras = ["and-cuda"]}
+tensorflow-probability = "0.24.0"
+scipy = "^1.14.1"
+kaleido = "0.2.1"
+tf-keras = "^2.16.0"
+pandas = "^2.2.3"
+numpy = "^1.6.2"
+obspy = "^1.4.1"
+statsmodels = "^0.14.4"
+tqdm = "^4.67.1"
+notebook = "^7.3.3"
+pyproj = "^3.7.1"
+
+
+[tool.poetry.group.dev.dependencies]
+notebook = "^7.2.2"
+plotly = "^5.24.1"
+matplotlib = "^3.9.2"
+black = {extras = ["jupyter"], version = "^24.8.0"}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
