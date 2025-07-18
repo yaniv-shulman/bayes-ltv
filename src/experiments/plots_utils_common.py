@@ -117,17 +117,28 @@ def plot_all_signals_matplotlib(
     received_noisy: np.ndarray,
     plots_file: Path,
     include_title_in_plots: bool,
+    width: float = 12.0,
+    height: float = 4.5,
+    dpi: float = 300.0,
 ) -> None:
     """
     Plot source, received, and received_noisy signals using matplotlib,
-    suitable for inclusion in a paper (high DPI, publication fonts).
-    """
 
-    # Create figure: width=12cm, height=4.5cm
+    Args:
+        source (np.ndarray): Source signal
+        received (np.ndarray): Received signal
+        received_noisy (np.ndarray): Received noisy signal
+        plots_file (Path): Path to the plots file
+        include_title_in_plots (bool): Include title in plot
+        width (float): Width of the plot in cm
+        height (float): Height of the plot in cm
+        dpi (float): DPI of the plot
+    """
     cm_to_inch = 1 / 2.54
+
     fig, ax = plt.subplots(
-        figsize=(12 * cm_to_inch, 4.5 * cm_to_inch),
-        dpi=300,
+        figsize=(width * cm_to_inch, height * cm_to_inch),
+        dpi=dpi,
     )
 
     x_rec = np.arange(len(received))
@@ -174,7 +185,7 @@ def plot_all_signals_matplotlib(
 
     # Save and close
     fig.savefig(plots_file, format=plots_file.suffix.lstrip("."), dpi=300)
-    plt.close(fig)
+    plt.show()
 
 
 def plot_training_loss_plotly(fit_results, include_title_in_plots, plot_file):
