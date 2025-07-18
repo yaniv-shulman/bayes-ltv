@@ -202,10 +202,10 @@ def plot_training_loss_plotly(fit_results, include_title_in_plots, plot_file):
     fig.add_trace(
         go.Scatter(
             x=epochs,
-            y=history["loss"],
+            y=np.log(history["loss"]),
             mode="lines",
             line=dict(color="green"),
-            name="Training Loss",
+            name="Training Log Loss",
         )
     )
 
@@ -214,20 +214,72 @@ def plot_training_loss_plotly(fit_results, include_title_in_plots, plot_file):
         fig.add_trace(
             go.Scatter(
                 x=epochs,
-                y=history["val_loss"],
+                y=np.log(history["val_loss"]),
                 mode="lines",
-                line=dict(color="green"),
-                name="Validation Loss",
+                line=dict(color="blue"),
+                name="Validation Log Loss",
             )
         )
 
     # Customize layout
     fig.update_layout(
-        title="Model Loss over Epochs" if include_title_in_plots else None,
+        title="Model Log Loss over Epochs" if include_title_in_plots else None,
         xaxis_title="Epoch",
-        yaxis_title="Loss",
+        yaxis_title="Log Loss",
         template="plotly_white",
     )
 
     fig.write_image(plot_file)
     fig.show()
+
+
+def plot_training_loss_matplotlib(
+    fit_results,
+    include_title_in_plots: bool,
+    plot_file: str,
+    width: float = 12.0,
+    height: float = 8.0,
+    dpi: float = 300.0,
+) -> None:
+    """
+    Plots training (and optional validation) loss over epochs using Matplotlib.
+    """
+    # Access history dictionary
+    history = fit_results.history
+
+    # Create a list of epochs (starting from 1)
+    epochs = list(range(1, len(history["loss"]) + 1))
+
+    # Convert cm to inches
+    cm = 1 / 2.54
+
+    # Create figure and axis with specified size and DPI
+    fig, ax = plt.subplots(figsize=(width * cm, height * cm), dpi=dpi)
+
+    # Plot training loss
+    ax.plot(epochs, np.log(history["loss"]), label="Training Log Loss", color="green")
+
+    # If validation loss is available, plot it as well
+    if "val_loss" in history:
+        ax.plot(
+            epochs,
+            np.log(history["val_loss"]),
+            label="Validation Log Loss",
+            color="blue",
+        )
+
+    # Add title if requested
+    if include_title_in_plots:
+        ax.set_title("Model Log Loss over Epochs")
+
+    # Label axes
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Log Loss")
+
+    # Add legend and grid
+    ax.legend()
+    ax.grid(True)
+
+    # Save to file and display
+    fig.savefig(plot_file, dpi=dpi, bbox_inches="tight")
+    plt.show()

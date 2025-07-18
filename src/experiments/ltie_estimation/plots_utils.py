@@ -106,7 +106,7 @@ def plot_fir_fit_and_ground_truth_matplotlib(
     include_title_in_plots: bool,
     band_alpha: float = 0.2,
     width: float = 12.0,
-    height: float = 4.5,
+    height: float = 8.0,
     dpi: float = 300.0,
 ) -> None:
     """
@@ -230,7 +230,7 @@ def posterior_samples_fir_matplotlib(
     include_title_in_plots: bool,
     sample_alpha: float = 0.01,
     width: float = 12.0,
-    height: float = 4.5,
+    height: float = 8.0,
     dpi: float = 300.0,
 ) -> None:
     """
@@ -362,7 +362,7 @@ def plot_frequency_response_matplotlib(
     include_title_in_plots: bool,
     sample_alpha: float = 0.01,
     width: float = 12.0,
-    height: float = 4.5,
+    height: float = 8.0,
     dpi: float = 300.0,
 ) -> None:
     """
