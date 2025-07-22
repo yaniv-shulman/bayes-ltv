@@ -238,7 +238,7 @@ def plot_training_loss_matplotlib(
     include_title_in_plots: bool,
     plot_file: str,
     width: float = 12.0,
-    height: float = 8.0,
+    height: float = 4.5,
     dpi: float = 300.0,
 ) -> None:
     """

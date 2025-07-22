@@ -196,7 +196,6 @@ def single_velocity_sinus_decaying(
             # phase: float = random_generator.uniform(0, 2 * np.pi)
             phase: float = 0.0
 
-
             # Set time constant tau such that the envelope decays to ~exp(-2) at the end of the pulse.
             tau: float = random_generator.uniform(0.5, 2.5)
             # Exponential decay envelope
@@ -280,8 +279,7 @@ def velocity_curve_sinus_decaying(
 
     angles: np.ndarray = np.linspace(0, 2 * np.pi, num_sources, endpoint=False)
     pairs: List[Tuple[np.ndarray, np.ndarray]] = [
-        (np.zeros(sequence_length), np.zeros(sequence_length))
-        for _ in range(num_pairs)
+        (np.zeros(sequence_length), np.zeros(sequence_length)) for _ in range(num_pairs)
     ]
     t_pulse: np.ndarray = np.arange(pulse_length) / sample_rate
 
@@ -289,7 +287,9 @@ def velocity_curve_sinus_decaying(
         source_positions: np.ndarray = np.array(
             [(radius * np.cos(a), radius * np.sin(a)) for a in angles]
         )
-        source_positions = (source_positions.T * (1 + random_generator.random(num_sources) * 100)).T
+        source_positions = (
+            source_positions.T * (1 + random_generator.random(num_sources) * 100)
+        ).T
 
         d1: np.ndarray = np.linalg.norm(rx1 - source_positions, axis=1)
         d2: np.ndarray = np.linalg.norm(rx2 - source_positions, axis=1)
@@ -310,7 +310,9 @@ def velocity_curve_sinus_decaying(
             phase: float = 0.0
             tau: float = random_generator.uniform(0.5, 2.5)
             envelope: np.ndarray = np.exp(-t_pulse / tau)
-            sinus: np.ndarray = amplitude * np.sin(2 * np.pi * freq * t_pulse + phase) * envelope
+            sinus: np.ndarray = (
+                amplitude * np.sin(2 * np.pi * freq * t_pulse + phase) * envelope
+            )
 
             if variable_velocity:
                 current_velocity = velocity_func(freq)
@@ -323,16 +325,20 @@ def velocity_curve_sinus_decaying(
             # Try to get a valid start time that keeps both pulses within bounds.
             valid_rt = None
             for trial in range(10):
-                candidate = random_generator.integers(margin, sequence_length * 2 - margin - pulse_length)
-                if (candidate + dt_j >= 0) and (candidate + dt_j + pulse_length <= sequence_length * 2):
+                candidate = random_generator.integers(
+                    margin, sequence_length * 2 - margin - pulse_length
+                )
+                if (candidate + dt_j >= 0) and (
+                    candidate + dt_j + pulse_length <= sequence_length * 2
+                ):
                     valid_rt = candidate
                     break
             if valid_rt is None:
                 # Skip the pulse if a valid candidate isn't found after several attempts.
                 continue
 
-            x1[valid_rt: valid_rt + pulse_length] += sinus
-            x2[valid_rt + dt_j: valid_rt + dt_j + pulse_length] += sinus
+            x1[valid_rt : valid_rt + pulse_length] += sinus
+            x2[valid_rt + dt_j : valid_rt + dt_j + pulse_length] += sinus
 
         start: int = len(x1) // 2 - sequence_length // 2
         end: int = start + sequence_length
@@ -346,6 +352,7 @@ def velocity_curve_sinus_decaying(
         pairs[i] = (sig1, sig2)
 
     return pairs, velocity_func
+
 
 if __name__ == "__main__":
     single_velocity(num_pairs=1000, sequence_length=1200, distance_rx=9000)

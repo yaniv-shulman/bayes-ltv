@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This repository contains the source code and experimental notebooks for the paper, "Bayesian Modeling and Estimation of Linear Time-Variant Systems using Neural Networks and Gaussian Processes."
+This repository contains the source code and experimental notebooks for the paper, ["Bayesian Modeling and Estimation of Linear Time-Variant Systems using Neural Networks and Gaussian Processes](https://arxiv.org/abs/2507.12878)."
 
 ***
 
