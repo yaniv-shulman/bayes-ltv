@@ -417,7 +417,7 @@ def run_test(
         target_learning_rate=target_learning_rate,
         warmup_steps=warmup_steps,
         epochs=epochs,
-        num_examples_per_epoch=batch_size,
+        num_examples_per_epoch=num_examples,
         alpha=alpha,
     )
 
