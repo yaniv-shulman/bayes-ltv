@@ -1,7 +1,6 @@
 \documentclass[preprint,1p,times,authoryear]{elsarticle}
 
 \usepackage{booktabs}
-\usepackage{hyperref}
 
 \makeatletter
 \def\ps@pprintTitle{%
@@ -18,8 +17,8 @@
 \usepackage{subcaption}
 \usepackage{float}
 \usepackage{lineno}
-\usepackage{lipsum}
 \usepackage{natbib}
+\usepackage{hyperref}
 
 \linenumbers
 
@@ -38,7 +37,7 @@ This is a draft version of work in progress, content will be revisited in subseq
     
 \title{Bayesian Modeling and Estimation of Linear Time-Variant Systems using Neural Networks and Gaussian Processes}
 \author{Yaniv Shulman}
-\address{yaniv@shulman.info}
+\ead{yaniv@shulman.info}
 
 
 
@@ -51,15 +50,15 @@ The identification of Linear Time-Variant (LTV) systems from input-output data i
 \section{Introduction}
 \label{s:Introduction}
 
-Linear Time-Variant (LTV) systems are fundamental to modeling dynamic processes in fields ranging from geophysics and communications to control theory \citep{Kozachek2024, Lin2020}. Unlike their time-invariant counterparts, an LTV system's behavior is described by an impulse response, $h(t, \tau)$, that changes over time, posing significant challenges for analysis and estimation \citep{Kailath1962, Bello1963}. The task of identifying $h(t, \tau)$ from input-output data is a severely ill-posed inverse problem, as one must infer a function of two variables from one-dimensional time series \citep{Aubel2015}. This work introduces a Bayesian framework for modeling such systems, where the inherent uncertainty and time-varying nature are captured probabilistically.
+Linear Time-Variant (LTV) systems are fundamental to modeling dynamic processes in fields ranging from geophysics and communications to control theory \citep{Kozachek2024, Lin2020, Bensen2007}. Unlike their time-invariant counterparts, an LTV system's behavior is described by an impulse response, $h(t, \tau)$, that changes over time, posing significant challenges for analysis and estimation \citep{Kailath1962, Bello1963}. The task of identifying $h(t, \tau)$ from input-output data is a severely ill-posed inverse problem, as one must infer a function of two variables from one-dimensional time series \citep{Aubel2015}. This work introduces a Bayesian framework for modeling such systems, where the inherent uncertainty and time-varying nature are captured probabilistically.
 
-Our central approach is to treat the impulse response itself as a stochastic process. We reparameterize the LTV impulse response into two components: a deterministic posterior mean, which represents the system's average behavior conditioned on observations, and a zero-mean stochastic process, which captures the random fluctuations or innovations. This decomposition, $h = \mu + \mathcal{E}$, provides a powerful and generalizable modeling framework. It allows us to unify the description of a wide spectrum of system behaviors, from purely deterministic systems to fully random ones, under a single probabilistic lens.
+Our central approach is to treat the impulse response itself as a stochastic process. We reparameterize the LTV impulse response into two components: a deterministic posterior mean, which represents the system's average behavior conditioned on observations, and a zero-mean stochastic process, which captures the random fluctuations or innovations. This decomposition, $h = \mu + \mathcal{E}$, provides a powerful and generalizable modeling framework. It allows us to unify the description of a wide spectrum of system behaviors, from purely deterministic systems to fully random ones, under a single probabilistic lens. The decomposition itself is not mathematically novel once a law over $h$ is specified; rather, the contribution here is to adopt it explicitly as a posterior representation for LTV system identification and to show that modern Bayesian ML tools make this representation practically useful.
 
-Within this framework, we define a useful class of laws over impulse responses, which we term \emph{Linear Time-Invariant in Expectation} (LTIE). In an LTIE model, the mean impulse response is constant, $\mu(t, \tau) = \mu(\tau)$, but the system still exhibits stochastic fluctuations. This concept is related to, but more general than, the "mean LTI" or "line-of-sight" component in channel models like Rician fading, as our framework allows for arbitrary, non-stationary covariance structures for the fluctuations around this constant mean. The LTIE concept provides a crucial conceptual bridge: when the true system is deterministic and LTI but unknown, Bayesian inference under our model induces a posterior law over impulse responses whose mean is time-invariant, so the inferred law is naturally interpreted as LTIE. In this sense, intrinsic channel variability and epistemic uncertainty are unified through the same posterior representation $h=\mu+\mathcal{E}$, even though they correspond to different underlying sources of randomness before conditioning on data. The novelty of this work lies not in positing a constant-mean random channel per se, but in the Bayesian posterior interpretation of this representation and in leveraging the generalized framework with modern machine learning tools, namely Bayesian neural networks and Gaussian processes, to perform robust, uncertainty-aware estimation of the impulse response. In the following sections, we develop this framework for both continuous and discrete-time systems, deriving key statistical properties and discussing their implications.
+Within this framework, we define a useful class of laws over impulse responses, which we term \emph{Linear Time-Invariant in Expectation} (LTIE).  In an LTIE channel model, the mean impulse response is constant, $\mu(t, \tau) = \mu(\tau)$, but the system still exhibits stochastic fluctuations. This concept is related to, but more general than, the "mean LTI" or "line-of-sight" component in channel models like Rician fading, as our framework allows for arbitrary, non-stationary covariance structures for the fluctuations around this constant mean. The LTIE concept provides a crucial conceptual bridge: when the true system is deterministic and LTI but unknown, Bayesian inference under our model induces a posterior law over impulse responses whose mean is time-invariant, so the inferred law is naturally interpreted as LTIE. In this sense, intrinsic channel variability and epistemic uncertainty are unified through the same posterior representation $h=\mu+\mathcal{E}$, even though they correspond to different underlying sources of randomness before conditioning on data. The novelty of this work lies not in positing a constant-mean random channel per se, but in the Bayesian posterior interpretation of this representation and in leveraging the generalized framework with modern machine learning tools, namely Bayesian neural networks and Gaussian processes, to perform robust, uncertainty-aware estimation of the impulse response. In the following sections, we develop this framework for both continuous and discrete-time systems, deriving key statistical properties and discussing their implications.
 
 \section{Related Work}
 
-The conceptual approach of this work, which models the impulse response as a stochastic process, builds upon the seminal statistical characterization of randomly time-variant linear channels by Bello \citep{Bello1963}. This foundational research led to widely used models such as the Wide-Sense Stationary Uncorrelated Scattering (WSSUS) channel, which in our framework corresponds to the special case of a zero-mean impulse-response process, i.e. $\mu=0$, together with the additional structural assumptions of wide-sense stationarity and uncorrelated scattering \citep{Yoo2005}. The Rician fading model is another well-known special case that includes a deterministic, line-of-sight component alongside random, scattered components, which is conceptually analogous to our decomposition of the impulse response $h$ into a non-zero mean component $\mu$ and a stochastic fluctuation $\mathcal{E}$ \citep{Rice1945, Lindsey1964}. Our framework provides a generalization of these classic models by accommodating a time-varying mean and arbitrary, non-stationary covariance structures.
+The conceptual approach of this work, which models the impulse response as a stochastic process, builds upon the seminal statistical characterization of randomly time-variant linear channels by Bello \citep{Bello1963}. This foundational research led to widely used models such as the Wide-Sense Stationary Uncorrelated Scattering (WSSUS) channel, which in our framework corresponds to the special case of a zero-mean impulse-response process, i.e. $\mu=0$, together with the additional structural assumptions of wide-sense stationarity and uncorrelated scattering \citep{Yoo2005}. The Rician fading model is another well-known special case that includes a deterministic, line-of-sight component alongside random, scattered components, which is conceptually analogous to our decomposition of the impulse response $h$ into a non-zero mean component $\mu$ and a stochastic fluctuation $\mathcal{E}$ \citep{Lindsey1964, SimonAlouini2005}. Our framework provides a generalization of these classic models by accommodating a time-varying mean and arbitrary, non-stationary covariance structures.
 
 Modern Bayesian system identification has moved towards placing priors directly on the impulse response itself. A significant development in this area is kernel-based regularization, where the impulse response is modeled as a draw from a Gaussian Process (GP) \citep{Pillonetto2023, Darwish2017}. This function-space perspective allows prior knowledge to be encoded via the GP's covariance function, or kernel. For instance, specialized "stable kernels" have been designed to enforce physical properties like smooth exponential decay, providing a principled form of regularization that ensures the stability of the identified model \citep{Pillonetto2023}.
 
@@ -72,6 +71,7 @@ It is important to distinguish the present framework from the standard Bayesian 
 In the following sections, we develop this framework for both continuous and discrete-time systems, validate its performance through a series of increasingly complex estimation tasks, and conclude with a discussion of its implications and avenues for future work.
 
 \section{A Bayesian Framework for LTV Systems}
+\label{s:bayesian_framework}
 
 We formalize the analysis of LTV systems by treating the impulse response as a stochastic process within a Bayesian setting. The system is probed by a known, deterministic input signal. Our primary modeling choice is to place the uncertainty in the impulse response itself, so that randomness is represented as an intrinsic property of the system or medium. When needed, an additional observation model can be layered on top of this latent channel model to account for measurement noise. This distinction allows the same posterior representation to describe both genuinely random channels and uncertainty about a deterministic but unknown channel. A key consequence is that the uncertainty induced at the output is shaped by the probing input through the posterior covariance of the impulse response, rather than arising solely as an additive signal-independent noise floor.
 
@@ -123,6 +123,7 @@ Thus the stochastic impulse-response model is the latent system model, while add
 
 
 The system's behavior can also be analyzed in the frequency domain. If the posterior mean is time-invariant, $\mu(t,\tau)=\mu(\tau)$, the system is \emph{Linear Time-Invariant in Expectation} (LTIE). For deterministic probing, a natural spectral characterization is obtained from repeated realizations of the random medium. Let $r_m^{(T)}(t)$ denote the output observed on the interval $[0,T]$ for the $m$-th realization, and define its finite-window Fourier transform
+
 \begin{equation}
 R_m^{(T)}(f)=\int_0^T r_m^{(T)}(t)e^{-j2\pi ft}\,dt.
 \end{equation}
@@ -131,7 +132,7 @@ The averaged periodogram
 \begin{equation}
 \widehat{S}_M^{(T)}(f)=\frac{1}{MT}\sum_{m=1}^M \abs{R_m^{(T)}(f)}^2
 \end{equation}
-converges pointwise in frequency $f$, under standard independence assumptions across realizations (or, more generally, under an appropriate law of large numbers for dependent trials) and provided $\E[\abs{R_1^{(T)}(f)}^2 \mid \mathcal{D}]<\infty$, to the finite-time ensemble spectrum
+converges, for each fixed observation window $T$ and each fixed frequency $f$, under standard independence assumptions across realizations (or, more generally, under an appropriate law of large numbers for dependent trials) and provided $\E[\abs{R_1^{(T)}(f)}^2 \mid \mathcal{D}]<\infty$, to the finite-time ensemble spectrum
 \begin{equation}
 S_r^{(T)}(f)=\frac{1}{T}\E[\abs{R_1^{(T)}(f)}^2 \mid \mathcal{D}].
 \end{equation}
@@ -140,7 +141,9 @@ This provides a natural finite-time ensemble spectral description for determinis
 
 \subsection{Discrete-Time Systems}
 
-The framework extends naturally to discrete-time systems, which are often described by a Finite Impulse Response (FIR) model. The latent channel output $g[n]$ in response to a deterministic input sequence $f[n]$ is given by the convolution sum:
+The framework extends naturally to discrete-time systems, which are often described by a Finite Impulse Response (FIR) model. For notational convenience, the discrete-time theory and experiments below use $(f,g,y)$ for input, latent output, and observed output respectively, in place of the continuous-time symbols $(s,r,y)$. 
+
+The latent channel output $g[n]$ in response to a deterministic input sequence $f[n]$ is given by the convolution sum:
 \begin{equation}
 g[n] = \sum_{k=1}^{p} h_k[n] f[n - k].
 \end{equation}
@@ -216,7 +219,7 @@ The framework provides a unified perspective that connects deterministic LTV sys
 
 \section{Example Applications}
 
-The Bayesian framework developed in this paper is applicable to any field where characterizing the transformation between an input and an output signal is critical. By modeling the system probabilistically, we can improve signal quality, predict outcomes with quantified uncertainty, and infer latent system properties from observed data. The source code, data, demonstrative Jupyter notebooks, and environment specifications for the following experiments are available online at \url{https://github.com/yaniv-shulman/bayes-ltv}.
+The Bayesian framework developed in this paper is applicable to any field where characterizing the transformation between an input and an output signal is critical. By modeling the system probabilistically, we can improve signal quality, predict outcomes with quantified uncertainty, and infer latent system properties from observed data. The source code, data, demonstrative Jupyter notebooks, and environment specifications for the following experiments are available online at \url{https://github.com/yaniv-shulman/bayes-ltv}. Unless stated otherwise, the experiments in this section should be interpreted primarily as validations of the usefulness of the posterior representation and associated estimators, rather than as direct empirical confirmation that the latent stochastic impulse-response model is the literal physical data-generating mechanism. In particular, when data are generated under a deterministic impulse response with additive observation noise, the resulting posterior law over impulse responses is best viewed as an uncertainty-aware inferential representation under deliberate model misspecification.
 
 
 \subsection{Impulse Response Regression from a Single Observation}
@@ -235,7 +238,7 @@ and the observed signal is
 \begin{equation}
 y[n] = g[n] + \nu[n],
 \end{equation}
-where $*$ denotes convolution and $\nu[n]$ is assumed to be zero-mean white Gaussian noise. This is the standard Bayesian observation model for LTI system identification, in which additive observation noise is modeled explicitly rather than being absorbed into a stochastic impulse-response model.
+where $*$ denotes convolution and $\nu[n]$ is assumed to be zero-mean white Gaussian noise. This is the standard Bayesian observation model for LTI system identification, in which additive observation noise is modeled explicitly rather than being absorbed into a stochastic impulse-response model. In this subsection we use the conventional LTI indexing $h[k]$ for the FIR coefficients; this differs from the no-direct-feedthrough convention $k=1,\ldots,p$ used in Section~\ref{s:bayesian_framework} only by an index shift and has no substantive effect on the analysis.
 
 A common analysis technique is to compute the cross-correlation between the input and output. We use the convention
 \[
@@ -251,26 +254,26 @@ Our Bayesian approach avoids deconvolution entirely. Instead, we treat the impul
 
 \subsubsection{Experimental Setup and Method}
 
-To create a realistic test case, the input signal $f[n]$ was taken from the publicly available "Earthquakes" dataset \citep{EarthquakesUCR2018}, which contains non-stationary, pulse-like seismic signals. A ground truth Finite Impulse Response (FIR) filter $h[k]$ was synthetically generated. The latent clean output was computed as $g[n] = (f * h)[n]$, and the final observed signal $y[n]$ was created by adding Gaussian noise to achieve a challenging signal-to-noise ratio.
+To create a realistic test case, the input signal $f[n]$ was taken from the publicly available "Earthquakes" dataset \citep{EarthquakesUCR2018}. In our visual inspection, the selected series exhibits non-stationary, pulse-like structure. A ground truth Finite Impulse Response (FIR) filter $h[k]$ was synthetically generated. The latent clean output was computed as $g[n] = (f * h)[n]$, and the final observed signal $y[n]$ was created by adding Gaussian noise to achieve a challenging signal-to-noise ratio.
 
-The core of our method is to model the convolution operation using a Bayesian neural network. Specifically, the impulse response $h$ is parameterized through the kernel of a 1D Bayesian convolutional layer. We use the Flipout estimator \citep{Wen2018}, as implemented in the \texttt{tfp.layers.Convolution1DFlipout} layer in TensorFlow Probability \citep{tensorflow2015-whitepaper, Dillon2017TFD}, which offers a low-variance method for estimating gradients. Since this layer implements cross-correlation under the library convention, the impulse response reported in our plots is obtained by reversing the learned kernel coefficients before comparison with the ground truth. The layer learns a posterior distribution for its kernel weights.
+The core of our method is to model the convolution operation using a Bayesian neural network. Specifically, the impulse response $h$ is parameterized through the kernel of a 1D Bayesian convolutional layer. We use the Flipout estimator \citep{Wen2018}, as implemented in the \texttt{tfp.layers.Convolution1DFlipout} layer in TensorFlow Probability \citep{tensorflow2015-whitepaper, Dillon2017TFD, TFPConvolution1DFlipoutDocs}, which offers a low-variance method for estimating gradients. Since this layer implements cross-correlation under the library convention, the impulse response reported in our plots is obtained by reversing the learned kernel coefficients before comparison with the ground truth. The layer learns a posterior distribution for its kernel weights.
 
 \begin{itemize}
     \item \textbf{Model and Prior:} The network consists of a single Bayesian convolutional layer. Following common practice for regularization, we place a fixed, zero-mean Gaussian prior on the weights of the kernel. The standard deviation of this prior is set to $1/\sqrt{\text{kernel\_size}}$, which helps prevent overfitting by discouraging excessively large filter coefficients. The posterior distribution is approximated as a diagonal Gaussian (mean-field approximation), which is learned during training.
 
-    \item \textbf{Loss Function and Inference:} We use variational inference to approximate the posterior. This is achieved by minimizing the negative Evidence Lower Bound (ELBO), which serves as our loss function. The ability to compute the gradient of the ELBO's expectation term with respect to the variational parameters is enabled by the reparameterization trick \citep{Kingma2013, Rezende2014}. The ELBO consists of two terms:
+    \item \textbf{Loss Function and Inference:} We use variational inference to approximate the posterior. In practice, we minimize an ELBO-style variational objective \citep{TFPConvolution1DFlipoutDocs}. The ability to compute the gradient of the expectation term with respect to the variational parameters is enabled by the reparameterization trick \citep{Kingma2013, Rezende2014}. The corresponding ELBO consists of two terms:
     \begin{enumerate}
         \item The \textit{expected log-likelihood}, which measures how well the model's predictions fit the data. For an assumed Gaussian observation model, this term yields a squared-error data-fit term up to additive constants and noise-variance scaling.
         \item The \textit{Kullback-Leibler (KL) divergence}, which measures the "cost" of deviating from the prior. This term regularizes the model by penalizing overly complex posteriors.
     \end{enumerate}
     
-The final loss used in practice is $\text{Loss} = ||y - \hat{g}||_2^2 + \beta \cdot \text{KL}(q(h) || p(h))$, where $q(h)$ is the approximate posterior, $p(h)$ is the prior, $\hat{g}$ is the noiseless model output induced by a sampled impulse response, and $\beta$ scales the KL divergence term according to the number of statistically distinct training examples represented in the objective. In the single-observation experiment, this number is $1$. Under a Gaussian observation model, this objective is proportional to the negative ELBO up to additive constants and a fixed noise-variance scaling of the squared L2 term.
+The final loss used in practice is $\text{Loss} = ||y - \hat{g}||_2^2 + \beta \cdot \text{KL}(q(h) || p(h))$, where $q(h)$ is the approximate posterior, $p(h)$ is the prior, $\hat{g}$ is the noiseless model output induced by a sampled impulse response, and $\beta$ scales the KL divergence term according to the number of statistically distinct training examples represented in the objective. In the single-observation experiment, this number is $1$, consistent with the TensorFlow Probability recommendation that the KL contribution be scaled so it is applied once per epoch \citep{TFPConvolution1DFlipoutDocs}. Under a Gaussian observation model, this objective is proportional to the negative ELBO up to additive constants and a fixed noise-variance scaling of the squared L2 term.
 
     \item \textbf{Training on a Single Observation:} To train the model on a single pair $(f,y)$, we employ a Monte Carlo technique. The single input is repeated to form a large computational batch (e.g., \texttt{batch\_size=1024}). During each training step, the network samples a different kernel $h$ from the current posterior approximation for each repeated instance in the batch. This provides a stable Monte Carlo estimate of the expectation in the ELBO's log-likelihood term, enabling effective gradient-based optimization even with a single data point. These repeated batch elements are used only for Monte Carlo estimation and do not constitute statistically distinct observations; accordingly, they do not affect the KL normalization. The model was trained using the Adam optimizer with a cosine decay learning rate schedule \citep{Loshchilov2017}. In experiments with multiple independent observation pairs, the KL term was normalized by the number of distinct pairs rather than by the computational batch size.
 \end{itemize}
 
 \subsubsection{Results and Discussion}
-The results demonstrate a successful recovery of the system's properties from a single noisy observation pair (visualized in Figure~\ref{fig:experiment1_a_all_data}). After training, the model yields a full posterior distribution for the impulse response $h$. As shown in the appendix, the posterior mean correctly tracks the ground truth filter, and the posterior variance provides a robust quantification of the estimation uncertainty (see Figures~\ref{fig:experiment1_a_samples_posterior_ir_estimate} and \ref{fig:experiment1_a_samples_posterior_ir_samples}).
+The results demonstrate a successful recovery of the system's properties from a single noisy observation pair (visualized in Figure~\ref{fig:experiment1_a_all_data}). After training, the model yields a full posterior distribution for the impulse response $h$. As shown in the appendix, the posterior mean correctly tracks the ground truth filter, and the posterior variance provides a robust quantification of the estimation uncertainty (see Figures~\ref{fig:experiment1_a_samples_posterior_ir_estimate} and \ref{fig:experiment1_a_samples_posterior_ir_samples}). 
 
 A key advantage of the Bayesian approach is the ability to propagate this learned uncertainty to any derived quantity. For instance, by passing the input signal through posterior samples of the filter, we can generate a full posterior distribution for the denoised signal, $\hat{g}[n]$. Figure~\ref{fig:denoising_performance} demonstrates that these predictions successfully reconstruct the clean ground truth signal, effectively filtering the observation noise. This uncertainty propagation extends to the frequency domain, where the posterior over $h[k]$ induces a posterior over the system's transfer function (Figure~\ref{fig:experiment1_a_samples_posterior_freq}). Finally, the framework can robustly estimate the cross-correlation function (CCF) with credible intervals, a significant improvement over a single, noisy CCF calculated from the observation, as shown in Figure~\ref{fig:app:xcorr_all}.
 
@@ -286,7 +289,7 @@ This experiment demonstrates the framework's application to a problem inspired b
 
 
 \subsubsection{Methodology}
-A synthetic ambient noise field was generated using a ground-truth dispersive velocity curve. The resulting signals were processed using two different methods:
+A synthetic ambient noise field was generated using a ground-truth dispersive velocity curve. The simulation is constructed so that, after ensemble averaging or sufficiently long stacking, the inter-station cross-correlation is proportional to the target Green's function over the band of interest, making comparison against an impulse-response estimate meaningful in this controlled setting. The resulting signals were processed using two different methods:
 
 \begin{enumerate}
     \item \textbf{Classical CCF Stacking:} Signal pairs were preprocessed with spectral whitening, segmented into windows, and cross-correlated; the resulting correlations were then averaged (stacked) to produce a single empirical CCF, following the standard ANT workflow \citep{Bensen2007}. This stacked CCF serves as an estimate of the impulse response.
@@ -339,7 +342,7 @@ As in the single-observation LTI experiment, this result should therefore be int
 
 \section{Conclusion}
 
-This paper introduced a unified Bayesian framework for modeling and estimating linear time-variant systems. The core of our contribution is the reparameterization of the impulse response, $h$, into a deterministic posterior mean, $\mu$, and a zero-mean stochastic process, $\mathcal{E}$. This decomposition, $h = \mu + \mathcal{E}$, provides a powerful and flexible lens through which to view system identification, seamlessly connecting deterministic LTI systems, fully stochastic channels, and the class of Linear Time-Invariant in Expectation (LTIE) laws over impulse responses introduced in this work. A particular strength of this viewpoint is that intrinsic channel variability and epistemic uncertainty are unified through the same posterior representation, while additive observation noise can be treated as a separate observation layer when needed. By treating uncertainty as an intrinsic property of the latent system model, our framework moves beyond simple point estimates to deliver a full posterior distribution over the impulse response.
+This paper introduced a unified Bayesian framework for modeling and estimating linear time-variant systems. The core of our contribution is the reparameterization of the impulse response, $h$, into a deterministic posterior mean, $\mu$, and a zero-mean stochastic process, $\mathcal{E}$. This decomposition, $h = \mu + \mathcal{E}$, provides a powerful and flexible lens through which to view system identification, seamlessly connecting deterministic LTI systems, fully stochastic channels, and the class of Linear Time-Invariant in Expectation (LTIE) laws over impulse responses introduced in this work. A particular strength of this viewpoint is that intrinsic channel variability and epistemic uncertainty are unified through the same posterior representation, while additive observation noise can be treated as a separate observation layer when needed. By representing uncertainty directly at the level of the latent impulse response, our framework moves beyond simple point estimates to deliver a full posterior distribution over the impulse response; when the true data-generating mechanism instead includes a separate additive observation-noise term, this posterior should be interpreted as an uncertainty-aware inferential representation rather than as a literal claim about the physical source of all randomness.
 
 We demonstrated the practical utility and robustness of this framework through a series of experiments. Our results showed that by leveraging modern tools like Bayesian neural networks and variational inference, we can solve the classic, ill-posed deconvolution problem for an LTI system from a single noisy observation, successfully quantifying the estimation uncertainty. In a simulated geophysical application, our Bayesian approach showed better data efficiency than the classical cross-correlation stacking method. Furthermore, we demonstrated that by incorporating a Gaussian Process as a structured temporal prior, our framework can track a continuously varying LTV impulse response in the simulated setting considered here, a task that is challenging for many standard techniques.
 
@@ -532,7 +535,7 @@ Despite these promising results, we acknowledge certain limitations that pave th
         \centering
         \includegraphics[height=4cm, keepaspectratio]{ltv_experiment1_ltv_fir_ground_truth_3d_matplotlib.png}
         \subcaption{The final time-varying impulse response created by smoothly interpolating between the three base filters over time.}
-        \label{fig:ltv_experiment1_a_samples_posterior_ir_samples}
+        \label{fig:ltv_experiment1_ground_truth_ltv_3d}
     \end{subfigure}
     \caption{Generation of the ground-truth time-varying impulse response, $h[n, k]$. The LTV system is synthesized by smoothly interpolating between the three distinct FIR components shown in (a) to produce the final time-varying response shown in (b).}
     \label{fig:ltv_ground_truth_generation}
