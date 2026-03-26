@@ -8,5 +8,5 @@ export NVIDIA_VISIBLE_DEVICES=all
 export PYTHONPATH
 
 poetry env use 3.11
-poetry install --no-root --sync
-poetry shell
+poetry install --no-root
+$(eval poetry env activate)
