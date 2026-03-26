@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict
+from typing import Dict, List, Tuple
 
 import numpy as np
 from scipy.signal import welch
@@ -194,3 +194,55 @@ def compute_cross_correlation(
     cc_std: np.ndarray = cc_arr.std(axis=0)
 
     return cc_mean, cc_std
+
+
+def compute_uniform_batch_repetitions(
+    num_independent_examples: int,
+    batch_size_base: int,
+) -> Tuple[int, int]:
+    """Compute a uniform repetition plan for a repeated optimization batch.
+
+    Args:
+        num_independent_examples: Number of statistically independent examples.
+        batch_size_base: Requested minimum batch size for optimization.
+
+    Returns:
+        The concrete batch size and the uniform repetition count per example.
+
+    Raises:
+        ValueError: If the example count or batch-size target is not positive.
+    """
+    if num_independent_examples <= 0:
+        raise ValueError("num_independent_examples must be positive.")
+
+    if batch_size_base <= 0:
+        raise ValueError("batch_size_base must be positive.")
+
+    if num_independent_examples < batch_size_base:
+        batch_size: int = int(
+            np.ceil(batch_size_base / num_independent_examples)
+            * num_independent_examples
+        )
+    else:
+        batch_size = num_independent_examples
+
+    return batch_size, batch_size // num_independent_examples
+
+
+def repeat_examples_for_batch(array: np.ndarray, num_repetitions: int) -> np.ndarray:
+    """Repeat each example uniformly along the batch axis.
+
+    Args:
+        array: Input array whose first dimension indexes examples.
+        num_repetitions: Number of uniform repetitions per example.
+
+    Returns:
+        The repeated array.
+
+    Raises:
+        ValueError: If the repetition count is not positive.
+    """
+    if num_repetitions <= 0:
+        raise ValueError("num_repetitions must be positive.")
+
+    return np.repeat(array, num_repetitions, axis=0)

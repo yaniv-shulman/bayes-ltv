@@ -53,8 +53,9 @@ def get_ltie_model(
     target_learning_rate: float,
     warmup_steps: int,
     epochs: int,
-    num_examples_per_epoch: int,
+    num_independent_examples_per_epoch: Optional[int] = None,
     alpha: Optional[float] = None,
+    observation_noise_std: Optional[float] = None,
 ) -> tf_keras.Sequential:
     """
     Returns a Bayesian neural network model representing an LTIE channel.
@@ -65,12 +66,31 @@ def get_ltie_model(
         target_learning_rate: The target learning rate.
         warmup_steps: The number of warmup steps.
         epochs: The number of epochs.
-        num_examples_per_epoch: The number of examples per epoch.
+        num_independent_examples_per_epoch: The number of statistically
+            independent examples per epoch. Replicated rows used only to form a
+            larger optimization batch should not be counted here.
         alpha: The scale of the prior distribution. If None, std = 1.0. If provided, std = alpha / sqrt(kernel_size).
+        observation_noise_std: The observation noise standard deviation. If
+            provided, the data-fit term is scaled according to a Gaussian
+            observation model.
 
     Returns:
         The Bayesian neural network model.
+
+    Raises:
+        ValueError: If the independent-example count is not specified exactly
+            once or is not positive.
     """
+    if num_independent_examples_per_epoch is None:
+        raise ValueError(
+            "num_independent_examples_per_epoch must be provided."
+        )
+
+    if num_independent_examples_per_epoch <= 0:
+        raise ValueError(
+            "num_independent_examples_per_epoch must be positive."
+        )
+
     custom_prior_fn = make_custom_kernel_prior(kernel_size, alpha=alpha)
 
     kernel_posterior_fn = default_mean_field_normal_fn(
@@ -108,10 +128,29 @@ def get_ltie_model(
         )
     )
 
-    loss: Callable[[tf.Tensor, tf.Tensor], tf.Tensor] = (
-        lambda y, y_hat: tf.sqrt(2 * tf.nn.l2_loss(y - y_hat))
-        + model.losses[0] / num_examples_per_epoch
-    )
+    observation_scale: float = 1.0
+    if observation_noise_std is not None:
+        observation_scale = 0.5 / (observation_noise_std**2)
+
+    def loss(y: tf.Tensor, y_hat: tf.Tensor) -> tf.Tensor:
+        """Return a single-example ELBO-style loss estimate."""
+        y = tf.reshape(y, tf.shape(y_hat))
+
+        residual: tf.Tensor = tf.reshape(
+            y - y_hat,
+            (tf.shape(y_hat)[0], -1),
+        )
+
+        squared_error_per_example: tf.Tensor = tf.reduce_sum(
+            tf.square(residual), axis=1
+        )
+
+        expected_data_fit: tf.Tensor = tf.reduce_mean(squared_error_per_example)
+
+        return (
+            observation_scale * expected_data_fit
+            + model.losses[0] / num_independent_examples_per_epoch
+        )
 
     model.compile(
         optimizer=tf_keras.optimizers.Adam(learning_rate=lr_warmup_decayed_fn),

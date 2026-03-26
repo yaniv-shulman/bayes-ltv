@@ -8,7 +8,9 @@ from scipy.special import j0
 from tqdm import tqdm
 
 from experiments.ant.ant_processing import (
+    compute_uniform_batch_repetitions,
     compute_cross_correlation,
+    repeat_examples_for_batch,
     spectral_whiten_pairs,
 )
 from models.ltie import get_ltie_model
@@ -397,13 +399,12 @@ def run_test(
     # Determine batch size and how many repeats of the data are needed
     num_examples = x.shape[0]
 
-    batch_size = int(
-        np.ceil(batch_size_base / num_examples) * num_examples
-        if num_examples < batch_size_base
-        else num_examples
+    batch_size: int
+    num_repeats: int
+    batch_size, num_repeats = compute_uniform_batch_repetitions(
+        num_independent_examples=num_examples,
+        batch_size_base=batch_size_base,
     )
-
-    num_repeats = batch_size // num_examples
 
     print(
         f"Training with num_examples {num_examples}, batch size {batch_size} and {num_repeats} repeats."
@@ -417,15 +418,11 @@ def run_test(
         target_learning_rate=target_learning_rate,
         warmup_steps=warmup_steps,
         epochs=epochs,
-        num_examples_per_epoch=num_examples,
+        num_independent_examples_per_epoch=num_examples,
         alpha=alpha,
     )
 
-    if num_repeats > 0:
-        # Prepare training data by repeating the examples to match the batch size.
-        x_repeat = np.repeat(x, num_repeats, axis=0)
-    else:
-        x_repeat = x
+    x_repeat = repeat_examples_for_batch(x, num_repeats)
 
     # Determine the output dimension of the model
     outdim = model(x_repeat).shape[1]
@@ -438,10 +435,7 @@ def run_test(
     else:
         y_slice = y[:, y_start:y_end, :]
 
-    if num_repeats > 0:
-        y_repeat = np.repeat(y_slice, num_repeats, axis=0)
-    else:
-        y_repeat = y_slice
+    y_repeat = repeat_examples_for_batch(y_slice, num_repeats)
 
     # Train the model (set verbose=0 for no output)
     print(f"Training model with x {x_repeat.shape} and y {y_repeat.shape}.")
@@ -452,6 +446,7 @@ def run_test(
         epochs=epochs,
         verbose=0,
         batch_size=batch_size,
+        shuffle=False,
     )
 
     best_train_loss = np.min(fit_results.history["loss"])

@@ -81,7 +81,7 @@ If not using the script, you can set up the environment manually with these Poet
 
 2.  **Install dependencies:**
     ```bash
-    poetry install --no-root --sync
+    poetry install --no-root
     ```
 
 3.  **Activate the environment:**
