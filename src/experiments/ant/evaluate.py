@@ -13,7 +13,10 @@ from experiments.ant.ant_processing import (
     repeat_examples_for_batch,
     spectral_whiten_pairs,
 )
-from models.ltie import get_ltie_model
+from models.ltie import (
+    ResidualObservationNoiseStdCallback,
+    get_ltie_model,
+)
 
 
 def compute_velocity_misfit(
@@ -153,7 +156,8 @@ def aggregate_ground_truth_error(
     velocity_true_or_func: Union[float, Callable[[float], float]],
     min_freq: Optional[float] = None,
     max_freq: Optional[float] = None,
-) -> Tuple[float, np.ndarray]:
+    return_selected_freqs: bool = False,
+) -> Union[Tuple[float, np.ndarray], Tuple[float, np.ndarray, np.ndarray]]:
     """
     Aggregates misfit error information using either a constant true velocity or a frequency-dependent velocity curve.
 
@@ -175,12 +179,14 @@ def aggregate_ground_truth_error(
                                     Defaults to the minimum frequency in `freqs` if None.
         max_freq (Optional[float]): Maximum frequency to include in the aggregation.
                                     Defaults to the maximum frequency in `freqs` if None.
+        return_selected_freqs (bool): Whether to return the selected frequency bins aligned with the error vector.
 
     Returns:
         mean_error (float): The mean misfit error aggregated over the selected frequency bins,
                             using the candidate velocity closest to the true (or frequency-dependent) velocity.
         error_vector (np.ndarray): The misfit error vector at the candidate velocities closest to the ground truth,
                                    one error value per frequency bin.
+        selected_freqs (np.ndarray): Returned only when `return_selected_freqs` is True.
     """
     # Set default frequency range if not provided.
     if min_freq is None:
@@ -213,6 +219,10 @@ def aggregate_ground_truth_error(
         error_vector = tmp_subset[idx, :]
 
     mean_error = np.mean(error_vector)
+
+    if return_selected_freqs:
+        return mean_error, error_vector, selected_freqs
+
     return mean_error, error_vector
 
 
@@ -336,6 +346,12 @@ def run_test(
     alpha: Optional[float],
     one_bit_quantization: bool,
     spectral_whitening_mir: bool,
+    observation_noise_std: Optional[float] = None,
+    estimate_observation_noise_std_from_residuals: bool = False,
+    observation_noise_std_ema_decay: float = 0.95,
+    observation_noise_std_min: float = 1e-3,
+    observation_noise_std_max: Optional[float] = None,
+    observation_noise_std_seed: int = 0,
 ) -> Tuple[
     float,
     np.ndarray,
@@ -359,6 +375,13 @@ def run_test(
         alpha: The alpha parameter for the LTIE model.
         one_bit_quantization: A boolean indicating whether to use one-bit quantization.
         spectral_whitening_mir: A boolean indicating whether to use spectral whitening for the impulse response.
+        observation_noise_std: Optional fixed observation-noise scale used in the Gaussian data-fit term.
+        estimate_observation_noise_std_from_residuals: Whether to update a non-trainable observation-noise scale from
+            residuals during training.
+        observation_noise_std_ema_decay: EMA decay used for residual-scale updates.
+        observation_noise_std_min: Lower clipping bound for the residual-based observation-noise scale.
+        observation_noise_std_max: Optional upper clipping bound for the residual-based observation-noise scale.
+        observation_noise_std_seed: Random seed used when sampling batch rows for residual-scale updates.
 
     Returns:
         A tuple containing:
@@ -420,6 +443,8 @@ def run_test(
         epochs=epochs,
         num_independent_examples_per_epoch=num_examples,
         alpha=alpha,
+        observation_noise_std=observation_noise_std,
+        estimate_observation_noise_std_from_residuals=estimate_observation_noise_std_from_residuals,
     )
 
     x_repeat = repeat_examples_for_batch(x, num_repeats)
@@ -440,6 +465,21 @@ def run_test(
     # Train the model (set verbose=0 for no output)
     print(f"Training model with x {x_repeat.shape} and y {y_repeat.shape}.")
 
+    callbacks: List[tf_keras.callbacks.Callback] = []
+
+    if estimate_observation_noise_std_from_residuals:
+        callbacks.append(
+            ResidualObservationNoiseStdCallback(
+                x_train=x_repeat,
+                y_train=y_repeat,
+                sample_size=num_examples,
+                ema_decay=observation_noise_std_ema_decay,
+                min_std=observation_noise_std_min,
+                max_std=observation_noise_std_max,
+                seed=observation_noise_std_seed,
+            )
+        )
+
     fit_results = model.fit(
         x_repeat,
         y_repeat,
@@ -447,6 +487,7 @@ def run_test(
         verbose=0,
         batch_size=batch_size,
         shuffle=False,
+        callbacks=callbacks,
     )
 
     best_train_loss = np.min(fit_results.history["loss"])
@@ -602,6 +643,12 @@ def run_all_tests(
     num_freq: int,
     one_bit_quantization: bool,
     spectral_whitening_mir: bool,
+    observation_noise_std: Optional[float] = None,
+    estimate_observation_noise_std_from_residuals: bool = False,
+    observation_noise_std_ema_decay: float = 0.95,
+    observation_noise_std_min: float = 1e-3,
+    observation_noise_std_max: Optional[float] = None,
+    observation_noise_std_seed: int = 0,
 ) -> pd.DataFrame:
     """
     Run a series of tests using different numbers of pairs and store the results in a DataFrame. The function
@@ -628,6 +675,13 @@ def run_all_tests(
         num_freq: The number of frequency bins to use for the evaluation.
         one_bit_quantization: A boolean indicating whether to use one-bit quantization.
         spectral_whitening_mir: A boolean indicating whether to use spectral whitening for the impulse response.
+        observation_noise_std: Optional fixed observation-noise scale used in the Gaussian data-fit term.
+        estimate_observation_noise_std_from_residuals: Whether to update a non-trainable observation-noise scale from
+            residuals during training.
+        observation_noise_std_ema_decay: EMA decay used for residual-scale updates.
+        observation_noise_std_min: Lower clipping bound for the residual-based observation-noise scale.
+        observation_noise_std_max: Optional upper clipping bound for the residual-based observation-noise scale.
+        observation_noise_std_seed: Random seed used when sampling batch rows for residual-scale updates.
     """
 
     # Compute kernel size based on the propagation time over the receiver distance.
@@ -650,6 +704,12 @@ def run_all_tests(
             alpha=alpha,
             one_bit_quantization=one_bit_quantization,
             spectral_whitening_mir=spectral_whitening_mir,
+            observation_noise_std=observation_noise_std,
+            estimate_observation_noise_std_from_residuals=estimate_observation_noise_std_from_residuals,
+            observation_noise_std_ema_decay=observation_noise_std_ema_decay,
+            observation_noise_std_min=observation_noise_std_min,
+            observation_noise_std_max=observation_noise_std_max,
+            observation_noise_std_seed=observation_noise_std_seed,
         )
 
         result = evaluate_test(

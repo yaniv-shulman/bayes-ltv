@@ -1011,21 +1011,32 @@ def plot_error_vectors(
     freqs: Optional[np.ndarray],
     include_title_in_plots: bool,
     plot_file: Path,
-):
+) -> None:
     """
     Plots error_vec_ccf and error_vec_mir as grouped bars side by side using Plotly.
 
     Args:
-        error_vec_ccf (np.ndarray or list): Error vector for the CCF model.
-        error_vec_mir (np.ndarray or list): Error vector for the MIR model.
-        freqs (np.ndarray or list, optional): Frequency values corresponding to each error value.
-                                              If not provided, the indices of the error vectors are used.
-        include_title_in_plots (bool): If True, includes a title in the plot.
-        plot_file (str): File path to save the resulting plot image.
+        error_vec_ccf: Error vector for the CCF model.
+        error_vec_mir: Error vector for the MIR model.
+        freqs: Frequency values corresponding to each error value. If not provided, the indices of the error vectors
+            are used.
+        include_title_in_plots: If True, includes a title in the plot.
+        plot_file: File path to save the resulting plot image.
+
+    Raises:
+        ValueError: If the error vectors have different lengths or if provided frequencies do not match the error-vector
+            length.
     """
+    if len(error_vec_ccf) != len(error_vec_mir):
+        raise ValueError("error_vec_ccf and error_vec_mir must have the same length.")
+
+    n: int = len(error_vec_ccf)
+
     # Use indices if no frequency values are provided.
     if freqs is None:
-        freqs = np.arange(len(error_vec_ccf))
+        freqs = np.arange(n)
+    elif len(freqs) != n:
+        raise ValueError("freqs length must match the error-vector length.")
 
     # Create grouped bar chart with specified colors.
     fig = go.Figure(
@@ -1059,19 +1070,35 @@ def plot_error_vectors_matplotlib(
     """
     Plot grouped bar charts of CCF and MIR error vectors side by side using Matplotlib.
 
-    If freqs is None or its length does not match the error vectors,
-    the x-axis will default to integer indices of the error arrays.
+    Args:
+        error_vec_ccf: Error vector for the CCF model.
+        error_vec_mir: Error vector for the MIR model.
+        freqs: The Frequency values corresponding to each error value. If not provided, the indices of the error vectors
+            are used.
+        include_title_in_plots: If True, includes a title in the plot.
+        plot_file: File path to save the resulting plot image.
+
+    Raises:
+        ValueError: If the error vectors have different lengths or if provided frequencies do not match the error-vector
+            length.
     """
+    if len(error_vec_ccf) != len(error_vec_mir):
+        raise ValueError("error_vec_ccf and error_vec_mir must have the same length.")
+
     # Ensure freqs matches error vector length
-    n = len(error_vec_ccf)
-    if freqs is None or len(freqs) != n:
+    n: int = len(error_vec_ccf)
+
+    if freqs is None:
         freqs = np.arange(n)
+    elif len(freqs) != n:
+        raise ValueError("freqs length must match the error-vector length.")
 
     # Determine bar width based on spacing
     if len(freqs) > 1:
         dx = np.min(np.diff(freqs))
     else:
         dx = 1.0
+
     width = dx * 0.4
 
     # Figure size: 12 cm × 8 cm

@@ -161,7 +161,6 @@ def fit_ltie_posterior_statistics(
 
     posterior_mean: np.ndarray = np.flip(
         model.layers[0].kernel_posterior.mean().numpy().reshape(-1)
-
     )
 
     posterior_std: np.ndarray = np.flip(
@@ -218,9 +217,8 @@ def summarize_pointwise_interval_coverage(
         half_width: np.ndarray = z_score * posterior_stds
         lower: np.ndarray = posterior_means - half_width
         upper: np.ndarray = posterior_means + half_width
-        covered: np.ndarray = (
-            (fir_ground_truth.reshape(1, -1) >= lower)
-            & (fir_ground_truth.reshape(1, -1) <= upper)
+        covered: np.ndarray = (fir_ground_truth.reshape(1, -1) >= lower) & (
+            fir_ground_truth.reshape(1, -1) <= upper
         )
 
         rows.append(
@@ -287,9 +285,7 @@ def run_pointwise_ltie_calibration(
         (num_replications, fir_ground_truth.shape[0])
     )
 
-    posterior_stds: np.ndarray = np.empty(
-        (num_replications, fir_ground_truth.shape[0])
-    )
+    posterior_stds: np.ndarray = np.empty((num_replications, fir_ground_truth.shape[0]))
     actual_batch_sizes: np.ndarray = np.empty(num_replications, dtype=int)
     num_repetitions_arr: np.ndarray = np.empty(num_replications, dtype=int)
 
@@ -343,9 +339,7 @@ def run_pointwise_ltie_calibration(
     summary["batch_size_base"] = batch_size
     summary["actual_batch_size"] = int(actual_batch_sizes[0])
     summary["num_repetitions_per_example"] = int(num_repetitions_arr[0])
-    summary["num_independent_examples_per_epoch"] = (
-        num_independent_examples_per_epoch
-    )
+    summary["num_independent_examples_per_epoch"] = num_independent_examples_per_epoch
     summary["source_column"] = source_column
 
     return summary

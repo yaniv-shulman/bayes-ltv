@@ -47,6 +47,128 @@ def make_custom_kernel_prior(
     return custom_kernel_prior
 
 
+class ResidualObservationNoiseStdCallback(tf_keras.callbacks.Callback):
+    """Update a non-trainable observation-noise scale from batch residuals.
+
+    The callback samples examples from the repeated optimization batch, computes a residual standard deviation, and
+    updates the model's non-trainable observation-noise standard deviation via an exponential moving average.
+    Repeated batch rows are treated as a practical sampling pool rather than as statistically distinct observations.
+
+    Args:
+        x_train: Training inputs used by the current fit call.
+        y_train: Training targets aligned with the model outputs.
+        sample_size: Number of batch rows to sample for each residual update.
+        ema_decay: Exponential moving-average decay in `[0, 1)`.
+        min_std: Lower clipping bound for the estimated standard deviation.
+        max_std: Optional upper clipping bound for the estimated standard deviation.
+        seed: Random seed used for batch-row sampling.
+
+    Raises:
+        ValueError: If the sample size, EMA decay, or clipping bounds are
+            invalid.
+    """
+
+    def __init__(
+        self,
+        x_train: np.ndarray,
+        y_train: np.ndarray,
+        sample_size: int,
+        ema_decay: float,
+        min_std: float,
+        max_std: Optional[float] = None,
+        seed: int = 0,
+    ) -> None:
+        """
+        A callback that updates the observation-noise standard deviation via an exponential moving average.
+
+        Args:
+            x_train: The observations used by the current fit call.
+            y_train: The training targets aligned with the model outputs.
+            sample_size: The number of batch rows to sample for each residual update.
+            ema_decay: The exponential moving average decay in `[0, 1)`.
+            min_std: The minimum clipping bound for the estimated standard deviation.
+            max_std: The maximum clipping bound for the estimated standard deviation.
+            seed: The random seed used for batch-row sampling.
+        """
+
+        super().__init__()
+
+        if sample_size <= 0:
+            raise ValueError("sample_size must be positive.")
+
+        if not 0.0 <= ema_decay < 1.0:
+            raise ValueError("ema_decay must lie in [0, 1).")
+
+        if min_std <= 0.0:
+            raise ValueError("min_std must be positive.")
+
+        if max_std is not None and max_std < min_std:
+            raise ValueError("max_std must be greater than or equal to min_std.")
+
+        self._x_train: np.ndarray = x_train
+        self._y_train: np.ndarray = y_train
+        self._sample_size: int = sample_size
+        self._ema_decay: float = ema_decay
+        self._min_std: float = min_std
+        self._max_std: Optional[float] = max_std
+        self._rng: np.random.Generator = np.random.default_rng(seed)
+
+    def on_epoch_end(self, epoch: int, logs: Optional[dict] = None) -> None:
+        """Update the observation-noise standard deviation after each epoch.
+
+        Args:
+            epoch: Epoch index supplied by Keras.
+            logs: Optional Keras logs dictionary.
+
+        Raises:
+            ValueError: If the attached model does not expose an observation
+                noise standard-deviation variable.
+        """
+        del epoch, logs
+
+        observation_noise_std_variable: Optional[tf.Variable] = getattr(
+            self.model,
+            "observation_noise_std_variable",
+            None,
+        )
+
+        if observation_noise_std_variable is None:
+            raise ValueError(
+                "ResidualObservationNoiseStdCallback requires the model to "
+                "define observation_noise_std_variable."
+            )
+
+        sample_size: int = min(self._sample_size, self._x_train.shape[0])
+
+        sampled_indices: np.ndarray = self._rng.choice(
+            self._x_train.shape[0],
+            size=sample_size,
+            replace=False,
+        )
+
+        x_sample: np.ndarray = self._x_train[sampled_indices]
+        y_sample: np.ndarray = self._y_train[sampled_indices]
+        y_pred: np.ndarray = self.model(x_sample, training=False).numpy()
+        y_sample_flat: np.ndarray = y_sample.reshape(y_sample.shape[0], -1)
+        y_pred_flat: np.ndarray = y_pred.reshape(y_pred.shape[0], -1)
+
+        residual_std: float = float(
+            np.sqrt(np.mean(np.square(y_sample_flat - y_pred_flat)))
+        )
+
+        updated_std: float = (
+            self._ema_decay * float(observation_noise_std_variable.numpy())
+            + (1.0 - self._ema_decay) * residual_std
+        )
+
+        clipped_std: float = max(updated_std, self._min_std)
+
+        if self._max_std is not None:
+            clipped_std = min(clipped_std, self._max_std)
+
+        observation_noise_std_variable.assign(clipped_std)
+
+
 def get_ltie_model(
     kernel_size: int,
     initial_learning_rate: float,
@@ -56,6 +178,7 @@ def get_ltie_model(
     num_independent_examples_per_epoch: Optional[int] = None,
     alpha: Optional[float] = None,
     observation_noise_std: Optional[float] = None,
+    estimate_observation_noise_std_from_residuals: bool = False,
 ) -> tf_keras.Sequential:
     """
     Returns a Bayesian neural network model representing an LTIE channel.
@@ -70,9 +193,10 @@ def get_ltie_model(
             independent examples per epoch. Replicated rows used only to form a
             larger optimization batch should not be counted here.
         alpha: The scale of the prior distribution. If None, std = 1.0. If provided, std = alpha / sqrt(kernel_size).
-        observation_noise_std: The observation noise standard deviation. If
-            provided, the data-fit term is scaled according to a Gaussian
-            observation model.
+        observation_noise_std: The observation noise standard deviation. If provided, the data-fit term is scaled
+        according to a Gaussian observation model.
+        estimate_observation_noise_std_from_residuals: Whether to maintain a non-trainable observation-noise scale via
+            residual-based updates outside backpropagation.
 
     Returns:
         The Bayesian neural network model.
@@ -82,13 +206,20 @@ def get_ltie_model(
             once or is not positive.
     """
     if num_independent_examples_per_epoch is None:
-        raise ValueError(
-            "num_independent_examples_per_epoch must be provided."
-        )
+        raise ValueError("num_independent_examples_per_epoch must be provided.")
 
     if num_independent_examples_per_epoch <= 0:
+        raise ValueError("num_independent_examples_per_epoch must be positive.")
+
+    if observation_noise_std is not None and observation_noise_std <= 0.0:
+        raise ValueError("observation_noise_std must be positive when provided.")
+
+    if (
+        observation_noise_std is not None
+        and estimate_observation_noise_std_from_residuals
+    ):
         raise ValueError(
-            "num_independent_examples_per_epoch must be positive."
+            "estimate_observation_noise_std_from_residuals must be False when observation_noise_std is provided."
         )
 
     custom_prior_fn = make_custom_kernel_prior(kernel_size, alpha=alpha)
@@ -128,9 +259,24 @@ def get_ltie_model(
         )
     )
 
-    observation_scale: float = 1.0
-    if observation_noise_std is not None:
-        observation_scale = 0.5 / (observation_noise_std**2)
+    observation_noise_std_variable: Optional[tf.Variable] = None
+
+    if (
+        estimate_observation_noise_std_from_residuals
+        or observation_noise_std is not None
+    ):
+        initial_observation_noise_std: float = (
+            observation_noise_std if observation_noise_std is not None else 1.0
+        )
+
+        observation_noise_std_variable = tf.Variable(
+            initial_value=initial_observation_noise_std,
+            trainable=False,
+            dtype=tf.as_dtype(tf_keras.backend.floatx()),
+            name="observation_noise_std",
+        )
+
+        model.observation_noise_std_variable = observation_noise_std_variable
 
     def loss(y: tf.Tensor, y_hat: tf.Tensor) -> tf.Tensor:
         """Return a single-example ELBO-style loss estimate."""
@@ -146,6 +292,15 @@ def get_ltie_model(
         )
 
         expected_data_fit: tf.Tensor = tf.reduce_mean(squared_error_per_example)
+        observation_scale: tf.Tensor
+
+        if observation_noise_std_variable is None:
+            observation_scale = tf.cast(1.0, dtype=y_hat.dtype)
+        else:
+            observation_scale = tf.cast(
+                0.5 / tf.square(observation_noise_std_variable),
+                dtype=y_hat.dtype,
+            )
 
         return (
             observation_scale * expected_data_fit
