@@ -35,7 +35,9 @@ def test_plot_all_signals_matplotlib_smoke(
         source=np.array([1.0, 2.0, 3.0, 4.0]),
         received=np.array([0.5, 1.5, 2.5]),
         received_noisy=np.array([0.4, 1.4, 2.4]),
-        plots_file=test_artifacts_dir.joinpath("common_plot_all_signals_matplotlib.png"),
+        plots_file=test_artifacts_dir.joinpath(
+            "common_plot_all_signals_matplotlib.png"
+        ),
         include_title_in_plots=False,
     )
 

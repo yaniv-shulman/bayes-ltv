@@ -37,6 +37,8 @@ def test_plot_fir_ground_truth_components_matplotlib_smoke(
         f_linear_phase1=np.array([1.0, 0.5, -0.1]),
         f_linear_phase2=np.array([0.8, 0.3, -0.2]),
         f_linear_phase3=np.array([0.7, 0.1, -0.3]),
-        plots_file=test_artifacts_dir.joinpath("ltv_plot_fir_gt_components_matplotlib.png"),
+        plots_file=test_artifacts_dir.joinpath(
+            "ltv_plot_fir_gt_components_matplotlib.png"
+        ),
         include_title_in_plots=False,
     )
