@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict
+from typing import Dict, List, Tuple
 
 import numpy as np
 from scipy.signal import welch
@@ -147,30 +147,24 @@ def one_bit_quantize_pairs(
 def compute_cross_correlation(
     pairs: List[Tuple[np.ndarray, np.ndarray]], one_bit_quantization: bool
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Compute the average cross-correlation of a list of signal pairs after spectral whitening and optional one-bit
-    quantization.
+    """Compute the average cross-correlation after whitening and optional one-bit quantization.
 
-    This function processes a collection of signal pairs in several steps:
-      1. Spectrally whitens each pair using `spectral_whiten_pairs`.
-      2. Optionally applies one-bit quantization to the whitened pairs if `one_bit_quantization` is True.
-      3. Computes the cross-correlation for each pair in the frequency domain:
-         - For each pair, computes the real FFT of both signals.
-         - Normalizes the FFT coefficients to unit magnitude (replacing any zeros with 1 to avoid division by zero),
-           effectively converting them to phase-only representations.
-         - Multiplies the FFT of the second signal with the conjugated, normalized FFT of the first signal.
-         - Applies the inverse real FFT to obtain the cross-correlation in the time domain.
-      4. Averages the individual cross-correlations over all pairs to produce a single representative cross-correlation.
+    The classical baseline here is implemented as a practical preprocessing pipeline:
+    the input pairs are first spectrally whitened, then optionally one-bit quantized,
+    and finally cross-correlated in the frequency domain. The cross-correlation step
+    uses the processed signals directly. This avoids re-normalizing the spectra after
+    one-bit quantization, which would otherwise suppress the effect of the quantizer.
 
-    Parameters:
-        pairs: A list where each element is a tuple containing two NumPy arrays, representing a pair of signals.
-        one_bit_quantization: If True, applies one-bit quantization to the whitened signal pairs before computing their
-            cross-correlation.
+    Args:
+        pairs: Signal pairs to preprocess and cross-correlate.
+        one_bit_quantization: Whether to apply one-bit quantization after whitening.
 
     Returns:
-        An array representing the average cross-correlation computed across all processed signal pairs.
-        An array representing the standard deviation of the cross-correlations across all pairs.
+        The mean and standard deviation of the cross-correlations across pairs.
     """
+    if len(pairs) == 0:
+        raise ValueError("pairs must contain at least one signal pair.")
+
     white_pairs: List[Tuple[np.ndarray, np.ndarray]] = spectral_whiten_pairs(
         pairs=pairs
     )
@@ -184,9 +178,6 @@ def compute_cross_correlation(
     for i in tqdm(range(len(white_pairs)), desc="Cross correlations"):
         a = np.fft.rfft(white_pairs[i][1])
         b = np.fft.rfft(white_pairs[i][0]).conj()
-        # Normalize while replacing zeros with 1
-        a = np.where(np.abs(a) == 0, 0, a / np.abs(a))
-        b = np.where(np.abs(b) == 0, 0, b / np.abs(b))
         cc.append(np.fft.irfft(a * b))
 
     cc_arr = np.array(cc)
@@ -194,3 +185,64 @@ def compute_cross_correlation(
     cc_std: np.ndarray = cc_arr.std(axis=0)
 
     return cc_mean, cc_std
+
+
+def compute_uniform_batch_repetitions(
+    num_independent_examples: int,
+    batch_size_base: int,
+) -> Tuple[int, int]:
+    """
+    Compute a uniform repetition plan for a repeated optimization batch.
+
+    Args:
+        num_independent_examples: Number of available training examples.
+        batch_size_base: Target optimization batch size.
+
+    Returns:
+        The concrete batch size and the uniform repetition count per example. If
+        available examples are fewer than `batch_size_base`, examples are
+        repeated uniformly to reach at least the target. Otherwise repetition is
+        `1` and `batch_size` is capped at `batch_size_base`.
+
+    Raises:
+        ValueError: If the example count or batch-size target is not positive.
+    """
+    if num_independent_examples <= 0:
+        raise ValueError("num_independent_examples must be positive.")
+
+    if batch_size_base <= 0:
+        raise ValueError("batch_size_base must be positive.")
+
+    if num_independent_examples < batch_size_base:
+        num_repetitions: int = int(
+            np.ceil(batch_size_base / num_independent_examples)
+        )
+
+        batch_size: int = int(num_repetitions * num_independent_examples)
+    else:
+        batch_size = batch_size_base
+        num_repetitions = 1
+
+    return batch_size, num_repetitions
+
+
+def repeat_examples_for_batch(array: np.ndarray, num_repetitions: int) -> np.ndarray:
+    """Repeat each example uniformly along the batch axis.
+
+    Args:
+        array: Input array whose first dimension indexes examples.
+        num_repetitions: Number of uniform repetitions per example.
+
+    Returns:
+        The repeated array.
+
+    Raises:
+        ValueError: If the repetition count is not positive.
+    """
+    if num_repetitions <= 0:
+        raise ValueError("num_repetitions must be positive.")
+
+    if num_repetitions == 1:
+        return array
+
+    return np.repeat(array, num_repetitions, axis=0)

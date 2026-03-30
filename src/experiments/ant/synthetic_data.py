@@ -1,4 +1,7 @@
-from typing import List, Tuple, Callable
+from concurrent.futures import ProcessPoolExecutor
+import os
+from itertools import repeat
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 from tqdm import tqdm
@@ -238,6 +241,7 @@ def velocity_curve_sinus_decaying(
     sample_rate: float = 20.0,
     noise_std: float = 0.0,
     pulse_length: int = 50,
+    num_workers: Optional[int] = None,
 ) -> Tuple[List[Tuple[np.ndarray, np.ndarray]], Callable[[float], float]]:
     """
     Simulates signals at two receivers. Each source emits a decaying sinusoidal pulse
@@ -255,10 +259,15 @@ def velocity_curve_sinus_decaying(
         sample_rate: Sampling rate in Hz.
         noise_std: Standard deviation of the additive noise. If 0, no noise is added.
         pulse_length: Number of samples over which each sinusoidal pulse is applied.
+        num_workers: Number of worker processes used to generate pairs. If
+            `None`, the function uses up to `os.cpu_count()` workers.
 
     Returns:
         List of tuples, each containing the pair of signals (as numpy arrays).
     """
+    if num_pairs <= 0:
+        raise ValueError("num_pairs must be positive.")
+
     rx1: np.ndarray = np.array([0, 0])
     rx2: np.ndarray = np.array([distance_rx, 0])
 
@@ -278,80 +287,168 @@ def velocity_curve_sinus_decaying(
     margin: int = pulse_length + int(100 * (3000 / ref_velocity))
 
     angles: np.ndarray = np.linspace(0, 2 * np.pi, num_sources, endpoint=False)
-    pairs: List[Tuple[np.ndarray, np.ndarray]] = [
-        (np.zeros(sequence_length), np.zeros(sequence_length)) for _ in range(num_pairs)
-    ]
+    base_source_positions: np.ndarray = np.column_stack(
+        (radius * np.cos(angles), radius * np.sin(angles))
+    )
     t_pulse: np.ndarray = np.arange(pulse_length) / sample_rate
 
-    for i in tqdm(range(len(pairs))):
-        source_positions: np.ndarray = np.array(
-            [(radius * np.cos(a), radius * np.sin(a)) for a in angles]
-        )
-        source_positions = (
-            source_positions.T * (1 + random_generator.random(num_sources) * 100)
-        ).T
+    pair_seeds: np.ndarray = random_generator.integers(
+        low=0,
+        high=np.iinfo(np.uint32).max,
+        size=num_pairs,
+        dtype=np.uint32,
+    )
 
-        d1: np.ndarray = np.linalg.norm(rx1 - source_positions, axis=1)
-        d2: np.ndarray = np.linalg.norm(rx2 - source_positions, axis=1)
+    resolved_num_workers: int = (
+        min(os.cpu_count() or 1, num_pairs) if num_workers is None else num_workers
+    )
 
-        # Precompute delays for constant velocity case.
-        if not variable_velocity:
-            t1: np.ndarray = d1 / velocity_func(0)
-            t2: np.ndarray = d2 / velocity_func(0)
-            dt: np.ndarray = np.round((t2 - t1) * sample_rate).astype(int)
+    if resolved_num_workers <= 0:
+        raise ValueError("num_workers must be positive when provided.")
 
-        x1: np.ndarray = np.zeros(sequence_length * 2)
-        x2: np.ndarray = np.zeros(sequence_length * 2)
+    if resolved_num_workers == 1:
+        pairs = [
+            _generate_velocity_curve_sinus_decaying_pair(
+                seed=int(pair_seed),
+                sequence_length=sequence_length,
+                base_source_positions=base_source_positions,
+                rx1=rx1,
+                rx2=rx2,
+                variable_velocity=variable_velocity,
+                poly_coeffs=poly_coeffs if variable_velocity else None,
+                constant_velocity=(
+                    None if variable_velocity else float(freq_velocity_pairs)
+                ),
+                sample_rate=sample_rate,
+                noise_std=noise_std,
+                pulse_length=pulse_length,
+                t_pulse=t_pulse,
+                margin=margin,
+            )
+            for pair_seed in tqdm(pair_seeds, total=num_pairs)
+        ]
+    else:
+        max_workers: int = min(resolved_num_workers, num_pairs)
+        chunksize: int = max(1, num_pairs // (max_workers * 4))
 
-        # For each source, add a decaying sinusoidal pulse.
-        for j in range(num_sources):
-            amplitude: float = random_generator.uniform(-1.5, 1.5)
-            freq: float = random_generator.uniform(0.1, 10.0)
-            phase: float = 0.0
-            tau: float = random_generator.uniform(0.5, 2.5)
-            envelope: np.ndarray = np.exp(-t_pulse / tau)
-            sinus: np.ndarray = (
-                amplitude * np.sin(2 * np.pi * freq * t_pulse + phase) * envelope
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            pairs = list(
+                tqdm(
+                    executor.map(
+                        _generate_velocity_curve_sinus_decaying_pair,
+                        map(int, pair_seeds),
+                        repeat(sequence_length),
+                        repeat(base_source_positions),
+                        repeat(rx1),
+                        repeat(rx2),
+                        repeat(variable_velocity),
+                        repeat(poly_coeffs if variable_velocity else None),
+                        repeat(
+                            None if variable_velocity else float(freq_velocity_pairs)
+                        ),
+                        repeat(sample_rate),
+                        repeat(noise_std),
+                        repeat(pulse_length),
+                        repeat(t_pulse),
+                        repeat(margin),
+                        chunksize=chunksize,
+                    ),
+                    total=num_pairs,
+                )
             )
 
-            if variable_velocity:
-                current_velocity = velocity_func(freq)
-                t1_current = d1[j] / current_velocity
-                t2_current = d2[j] / current_velocity
-                dt_j = round((t2_current - t1_current) * sample_rate)
-            else:
-                dt_j = dt[j]
-
-            # Try to get a valid start time that keeps both pulses within bounds.
-            valid_rt = None
-            for trial in range(10):
-                candidate = random_generator.integers(
-                    margin, sequence_length * 2 - margin - pulse_length
-                )
-                if (candidate + dt_j >= 0) and (
-                    candidate + dt_j + pulse_length <= sequence_length * 2
-                ):
-                    valid_rt = candidate
-                    break
-            if valid_rt is None:
-                # Skip the pulse if a valid candidate isn't found after several attempts.
-                continue
-
-            x1[valid_rt : valid_rt + pulse_length] += sinus
-            x2[valid_rt + dt_j : valid_rt + dt_j + pulse_length] += sinus
-
-        start: int = len(x1) // 2 - sequence_length // 2
-        end: int = start + sequence_length
-        sig1: np.ndarray = x1[start:end]
-        sig2: np.ndarray = x2[start:end]
-
-        if noise_std > 0:
-            sig1 = sig1 + random_generator.normal(0, noise_std, sequence_length)
-            sig2 = sig2 + random_generator.normal(0, noise_std, sequence_length)
-
-        pairs[i] = (sig1, sig2)
-
     return pairs, velocity_func
+
+
+def _generate_velocity_curve_sinus_decaying_pair(
+    seed: int,
+    sequence_length: int,
+    base_source_positions: np.ndarray,
+    rx1: np.ndarray,
+    rx2: np.ndarray,
+    variable_velocity: bool,
+    poly_coeffs: Optional[np.ndarray],
+    constant_velocity: Optional[float],
+    sample_rate: float,
+    noise_std: float,
+    pulse_length: int,
+    t_pulse: np.ndarray,
+    margin: int,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Generate one synthetic receiver pair for curved-velocity ANT data."""
+    random_generator: np.random.Generator = np.random.default_rng(seed)
+    num_sources: int = base_source_positions.shape[0]
+    radial_scale: np.ndarray = 1.0 + random_generator.random(num_sources) * 100.0
+    source_positions: np.ndarray = base_source_positions * radial_scale[:, np.newaxis]
+
+    d1: np.ndarray = np.linalg.norm(rx1 - source_positions, axis=1)
+    d2: np.ndarray = np.linalg.norm(rx2 - source_positions, axis=1)
+
+    if not variable_velocity:
+        if constant_velocity is None:
+            raise ValueError(
+                "constant_velocity must be provided for fixed-velocity generation."
+            )
+        t1: np.ndarray = d1 / constant_velocity
+        t2: np.ndarray = d2 / constant_velocity
+        dt: np.ndarray = np.round((t2 - t1) * sample_rate).astype(int)
+    else:
+        if poly_coeffs is None:
+            raise ValueError(
+                "poly_coeffs must be provided for variable-velocity generation."
+            )
+
+    x1: np.ndarray = np.zeros(sequence_length * 2)
+    x2: np.ndarray = np.zeros(sequence_length * 2)
+
+    amplitudes: np.ndarray = random_generator.uniform(-1.5, 1.5, num_sources)
+    freqs: np.ndarray = random_generator.uniform(0.1, 10.0, num_sources)
+    taus: np.ndarray = random_generator.uniform(0.5, 2.5, num_sources)
+
+    for j in range(num_sources):
+        envelope: np.ndarray = np.exp(-t_pulse / taus[j])
+        sinus: np.ndarray = (
+            amplitudes[j] * np.sin(2 * np.pi * freqs[j] * t_pulse) * envelope
+        )
+
+        if variable_velocity:
+            current_velocity: float = float(np.polyval(poly_coeffs, freqs[j]))
+            t1_current: float = d1[j] / current_velocity
+            t2_current: float = d2[j] / current_velocity
+            dt_j: int = round((t2_current - t1_current) * sample_rate)
+        else:
+            dt_j = int(dt[j])
+
+        valid_rt: Optional[int] = None
+        for _ in range(10):
+            candidate: int = int(
+                random_generator.integers(
+                    margin,
+                    sequence_length * 2 - margin - pulse_length,
+                )
+            )
+            if (
+                candidate + dt_j >= 0
+                and candidate + dt_j + pulse_length <= sequence_length * 2
+            ):
+                valid_rt = candidate
+                break
+        if valid_rt is None:
+            continue
+
+        x1[valid_rt : valid_rt + pulse_length] += sinus
+        x2[valid_rt + dt_j : valid_rt + dt_j + pulse_length] += sinus
+
+    start: int = len(x1) // 2 - sequence_length // 2
+    end: int = start + sequence_length
+    sig1: np.ndarray = x1[start:end]
+    sig2: np.ndarray = x2[start:end]
+
+    if noise_std > 0:
+        sig1 = sig1 + random_generator.normal(0, noise_std, sequence_length)
+        sig2 = sig2 + random_generator.normal(0, noise_std, sequence_length)
+
+    return sig1, sig2
 
 
 if __name__ == "__main__":
