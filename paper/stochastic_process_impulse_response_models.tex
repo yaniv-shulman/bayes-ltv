@@ -41,7 +41,7 @@ This is a draft version of work in progress, content will be revisited in subseq
 
 
 \begin{abstract}
-The identification of Linear Time-Varying (LTV) systems from input-output data is a fundamental yet challenging ill-posed inverse problem. This work introduces a unified Bayesian framework that models the system's impulse response, $h(t, \tau)$, as a stochastic process. We decompose the response into a posterior mean and a random fluctuation term, a formulation that provides a principled approach for quantifying uncertainty, unifies intrinsic channel variability and epistemic uncertainty through a common posterior representation, and naturally defines a new, useful system class we term Linear Time-Invariant in Expectation (LTIE). To perform inference, we leverage modern machine learning techniques, including Bayesian neural networks and Gaussian Processes, using scalable variational inference. We demonstrate through a series of experiments that our framework can infer the properties of an LTI system from a single noisy observation, including under deliberate additive-noise misspecification, exhibits convergence to lower overall error floor compared to classical methods in a simulated ambient noise tomography problem, and can track a continuously varying LTV impulse response by using a structured Gaussian Process prior. This work provides a flexible and robust methodology for uncertainty-aware system identification in dynamic environments.
+The identification of Linear Time-Varying (LTV) systems from input-output data is a fundamental yet challenging ill-posed inverse problem. This work introduces a unified Bayesian framework that models the system's impulse response, $h(t, \tau)$, as a stochastic process. We decompose the response into a posterior mean and a random fluctuation term, a formulation that provides a principled approach for quantifying uncertainty, unifies intrinsic channel variability and epistemic uncertainty through a common posterior representation, and naturally defines a new, useful system class we term Linear Time-Invariant in Expectation (LTIE). To perform inference, we leverage modern machine learning techniques, including Bayesian neural networks and Gaussian Processes, using scalable variational inference. We demonstrate through a series of experiments that our framework can infer the properties of an LTI system from a single noisy input-output pair, including under deliberate additive-noise misspecification, achieve a lower overall error floor than the classical CCF stacking baseline in a simulated ambient noise tomography setting, and track a continuously varying LTV impulse response by using a structured Gaussian Process prior. This work provides a flexible and robust methodology for uncertainty-aware system identification in dynamic environments.
 \end{abstract}
 
 \end{frontmatter}
@@ -349,7 +349,7 @@ As in the single-observation LTI experiment, this result should therefore be int
 
 This paper introduced a unified Bayesian framework for modeling and estimating linear time-varying systems. By representing uncertainty directly at the level of the latent impulse response, the framework provides a posterior interpretation that connects deterministic LTI systems, fully stochastic channels, and LTIE laws over impulse responses. A particular strength of this viewpoint is that intrinsic channel variability and epistemic uncertainty are unified through the same posterior representation, while additive observation noise can be treated as a separate observation layer when needed. When the true data-generating mechanism instead includes a separate additive observation-noise term, the resulting posterior should be interpreted as an uncertainty-aware inferential representation rather than as a literal claim about the physical source of all randomness.
 
-We demonstrated the practical utility and robustness of this framework through a series of experiments. Our results showed that by leveraging modern tools like Bayesian neural networks and variational inference, we can solve the classic, ill-posed deconvolution problem for an LTI system from a single noisy observation, successfully quantifying the estimation uncertainty. In a simulated geophysical application, our Bayesian approach showed convergence to lower overall error floor than the classical cross-correlation stacking method. Furthermore, we demonstrated that by incorporating a Gaussian Process as a structured temporal prior, our framework can track a continuously varying LTV impulse response in the simulated setting considered here, a task that is challenging for many standard techniques.
+We demonstrated the practical utility and robustness of this framework through a series of experiments. Our results showed that by leveraging modern tools like Bayesian neural networks and variational inference, we can solve the classic, ill-posed deconvolution problem for an LTI system from a single noisy input-output pair, successfully quantifying the estimation uncertainty. In a simulated geophysical application, our Bayesian approach showed a lower overall error floor than the classical CCF stacking baseline. Furthermore, we demonstrated that by incorporating a Gaussian Process as a structured temporal prior, our framework can track a continuously varying LTV impulse response in the simulated setting considered here, a task that is challenging for many standard techniques.
 
 The primary implication of this work is that the fusion of classical system theory with probabilistic machine learning offers a more complete and honest assessment of system behavior. The ability to propagate uncertainty from the impulse response to any derived quantity such as a denoised signal or a cross-correlation function is critical for robust decision-making in fields like control theory, communications, and geophysics.
 
@@ -400,7 +400,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
     \centering
     \begin{subfigure}[b]{.47\linewidth}
         \includegraphics[width=\linewidth]{ltie_experiment1_fir_estimate_matplotlib.png}
-        \subcaption{The posterior mean (blue dashed line) of the estimated impulse response tracks the ground truth (orange). The shaded region indicates the epistemic uncertainty ($\pm 2$ standard deviations).}
+        \subcaption{The posterior mean (blue dashed line) of the estimated impulse response tracks the ground truth (orange). The shaded region shows the posterior mean $\pm 2$ posterior standard deviations.}
         \label{fig:experiment1_a_samples_posterior_ir_estimate}
     \end{subfigure}
     \hfill
@@ -475,16 +475,16 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
     \centering
     \begin{subfigure}[b]{.47\linewidth}
         \includegraphics[width=\linewidth]{ant_estimated_ccf_full_right_half_matplotlib.png}
-        \subcaption{The mean of the estimated Green's function computed by classical CCF stacking. The shaded region indicates the empirical standard deviation ($\pm 1 \sigma$) across the classical estimates.}
+        \subcaption{The mean of the estimated Green's function computed by classical CCF stacking. The shaded region shows the empirical mean $\pm 1$ empirical standard deviation across the classical estimates.}
         \label{fig:ant_ccf_estimate}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{.47\linewidth}
         \includegraphics[width=\linewidth]{ant_estimated_ir_full_mean_right_half_matplotlib.png}
-        \subcaption{The posterior mean of the impulse response computed by our Bayesian model. The shaded region indicates posterior epistemic uncertainty ($\pm 1 \sigma$).}
+        \subcaption{The posterior mean of the impulse response computed by our Bayesian model. The shaded region shows the posterior mean $\pm 1$ posterior standard deviation.}
         \label{fig:ant_mir_estimate}
     \end{subfigure}
-    \caption{Visulaization of the estimated Green's function from (a) classical CCF stacking and (b) our Bayesian model, using 12000 signal pairs in a simulated ANT experiment.}
+    \caption{Visualization of the estimated Green's function from (a) classical CCF stacking and (b) our Bayesian model, using 12000 signal pairs in a simulated ANT experiment.}
 \end{figure}
 
 \begin{figure}[!htp]
