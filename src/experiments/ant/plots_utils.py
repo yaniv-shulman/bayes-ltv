@@ -71,13 +71,24 @@ def plot_pair_segment_matplotlib(
     seg2: np.ndarray,
     include_title_in_plots: bool,
     plot_file: Path,
+    width: float = 12.0,
+    height: float = 4.5,
+    dpi: float = 300.0,
 ) -> None:
     """
     Plot two paired segments (source vs receiver) side-by-side,
-    saving a publication-quality figure similar to the Plotly version.
+
+    Args:
+        seg1: Source segment
+        seg2: Receiver segment
+        include_title_in_plots: Include title in plot
+        plot_file: Path to the plot
+        width: Width of the plot
+        height: Height of the plot
+        dpi: DPI of the plot
     """
     cm = 1 / 2.54  # inches per cm
-    fig, ax = plt.subplots(figsize=(12 * cm, 4.5 * cm), dpi=300)
+    fig, ax = plt.subplots(figsize=(width * cm, height * cm), dpi=dpi)
 
     x1 = np.arange(len(seg1))
     x2 = np.arange(len(seg2))
@@ -97,6 +108,7 @@ def plot_pair_segment_matplotlib(
 
     fig.tight_layout(pad=0.2)
     fig.savefig(plot_file, dpi=300)
+    plt.show()
     plt.close(fig)
 
 
@@ -187,6 +199,77 @@ def plot_pair_psd_plotly(
     fig.show()
 
 
+def plot_pair_psd_matplotlib(
+    source_stats_db,
+    receiver_stats_db,
+    include_title_in_plots: bool,
+    plot_file: Path,
+    width: float = 12.0,
+    height: float = 4.5,
+    dpi=300,
+) -> None:
+    """
+    Plots PSD curves for source and receiver using Matplotlib.
+
+    Args:
+        source_stats_db: dict or object with .freq and .psd_mean_db arrays for the source.
+        receiver_stats_db: dict or object with .freq and .psd arrays for the receiver.
+        include_title_in_plots: whether to include a title.
+        plot_file: Path to save the figure (extension decides format).
+        width: Width of the figure.
+        height: Height of the figure.
+        dpi: DPI of the figure.
+    """
+
+    # Publication‑quality size: 12×4.5 cm
+    cm_to_inch = 1 / 2.54
+    fig, ax = plt.subplots(
+        figsize=(width * cm_to_inch, height * cm_to_inch),
+        dpi=dpi,
+    )
+
+    # Extract frequency & PSD data
+    # Adjust these lines if your stats_db uses different attribute names
+    f_src = np.asarray(source_stats_db["freq"])
+    psd_src = np.asarray(source_stats_db["psd_mean_db"])
+    f_rcv = np.asarray(receiver_stats_db["freq"])
+    psd_rcv = np.asarray(receiver_stats_db["psd_mean_db"])
+
+    # Plot on log‑log scale
+    ax.loglog(
+        f_src,
+        psd_src,
+        linewidth=1.5,
+        label="Source PSD",
+    )
+    ax.loglog(
+        f_rcv,
+        psd_rcv,
+        linewidth=1.5,
+        label="Receiver PSD",
+    )
+
+    # Labels and optional title
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel("PSD")
+    if include_title_in_plots:
+        ax.set_title("Power Spectral Density: Source vs. Receiver")
+
+    # Legend & grid
+    ax.legend(loc="upper right", frameon=False)
+    ax.grid(which="both", linestyle="--", linewidth=0.5, alpha=0.6)
+
+    # Optional spine cleanup
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+
+    # Layout, save, and display
+    fig.tight_layout(pad=0.2)
+    fig.savefig(plot_file, dpi=300)
+    plt.show()
+    plt.close(fig)
+
+
 def plot_estimated_ir_plotly(
     mean_ir: np.ndarray,
     std_ir: np.ndarray,
@@ -238,10 +321,13 @@ def plot_estimated_ir_matplotlib(
     std_ir: np.ndarray,
     include_title_in_plots: bool,
     plot_file: Path,
+    width: float = 12.0,
+    height: float = 4.5,
+    dpi: float = 300.0,
 ) -> None:
     """Estimated impulse response ±1σ band + mean."""
     cm = 1 / 2.54
-    fig, ax = plt.subplots(figsize=(12 * cm, 4.5 * cm), dpi=300)
+    fig, ax = plt.subplots(figsize=(width * cm, height * cm), dpi=dpi)
 
     x = np.arange(len(mean_ir))
     # ±1σ envelope
@@ -272,6 +358,7 @@ def plot_estimated_ir_matplotlib(
 
     fig.tight_layout(pad=0.2)
     fig.savefig(plot_file, dpi=300)
+    plt.show()
     plt.close(fig)
 
 
@@ -286,8 +373,6 @@ def plot_freq_response_plotly(
     amplitude_lower_ci: Optional[np.ndarray] = None,
     amplitude_upper_ci: Optional[np.ndarray] = None,
 ) -> None:
-    import plotly.graph_objects as go
-
     fig = go.Figure()
 
     if freq_responses_samples is not None:
@@ -385,6 +470,120 @@ def plot_freq_response_plotly(
     fig.show()
 
 
+def plot_freq_response_matplotlib(
+    w_hat: np.ndarray,
+    amplitude_model_h_hat_mean: np.ndarray,
+    include_title_in_plots: bool,
+    plot_file: Path,
+    freq_responses_samples: Optional[np.ndarray] = None,
+    amplitude_mean_posterior: Optional[np.ndarray] = None,
+    amplitude_median_posterior: Optional[np.ndarray] = None,
+    amplitude_lower_ci: Optional[np.ndarray] = None,
+    amplitude_upper_ci: Optional[np.ndarray] = None,
+    width: float = 12.0,
+    height: float = 8.0,
+    dpi: float = 300.0,
+) -> None:
+    """
+    Plot frequency‐response summary using Matplotlib.
+
+    Args:
+        w_hat: array of frequencies.
+        amplitude_model_h_hat_mean: model’s estimated mean amplitude.
+        include_title_in_plots: whether to draw title.
+        plot_file: Path to save the figure (format by suffix).
+        freq_responses_samples: posterior samples, shape (N_samples, len(w_hat)).
+        amplitude_mean_posterior: posterior‐sample mean.
+        amplitude_median_posterior: posterior‐sample median.
+        amplitude_lower_ci: lower CI curve (e.g. 2.5%).
+        amplitude_upper_ci: upper CI curve (e.g. 97.5%).
+    """
+    cm_to_inch = 1 / 2.54
+
+    fig, ax = plt.subplots(
+        figsize=(width * cm_to_inch, height * cm_to_inch),
+        dpi=dpi,
+    )
+
+    # Posterior samples (very light)
+    if freq_responses_samples is not None:
+        for i, sample in enumerate(freq_responses_samples):
+            ax.plot(
+                w_hat,
+                sample,
+                linewidth=1.0,
+                alpha=0.01,
+                label="Posterior samples" if i == 0 else "_nolegend_",
+            )
+
+    # Model‐estimated mean
+    ax.plot(
+        w_hat,
+        amplitude_model_h_hat_mean,
+        linewidth=1.5,
+        label="Estimated Mean (model kernel mean)",
+    )
+
+    # Posterior‐based mean
+    if amplitude_mean_posterior is not None:
+        ax.plot(
+            w_hat,
+            amplitude_mean_posterior,
+            linewidth=1.5,
+            label="Posterior Mean (samples)",
+        )
+
+    # Posterior‐based median
+    if amplitude_median_posterior is not None:
+        ax.plot(
+            w_hat,
+            amplitude_median_posterior,
+            linewidth=1.5,
+            linestyle="-",
+            label="Posterior Median (samples)",
+        )
+
+    # 95% credible interval
+    if amplitude_lower_ci is not None:
+        ax.plot(
+            w_hat,
+            amplitude_lower_ci,
+            linewidth=1.0,
+            linestyle="dashdot",
+            label="2.5% CI",
+            color="black",
+        )
+    if amplitude_upper_ci is not None:
+        ax.plot(
+            w_hat,
+            amplitude_upper_ci,
+            linewidth=1.0,
+            linestyle="dashdot",
+            label="97.5% CI",
+            color="black",
+        )
+
+    # Labels & optional title
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel("Amplitude (dB)")
+    if include_title_in_plots:
+        ax.set_title("Frequency Response of the Estimated Impulse Response")
+
+    # Legend & grid
+    ax.legend(loc="upper right", frameon=False)
+    ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.6)
+
+    # Clean up top/right spines
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+
+    # Save & show
+    fig.tight_layout(pad=0.2)
+    fig.savefig(plot_file, dpi=300)
+    plt.show()
+    plt.close(fig)
+
+
 def plot_ccf_plotly(
     cc_mean: np.ndarray,
     cc_std: np.ndarray,
@@ -466,10 +665,13 @@ def plot_ccf_matplotlib(
     fs: float,
     include_title_in_plots: bool,
     plot_file: Path,
+    width: float = 12.0,
+    height: float = 4.5,
+    dpi: float = 300.0,
 ) -> None:
     """Cross-correlation function ±1σ band + mean."""
     cm = 1 / 2.54
-    fig, ax = plt.subplots(figsize=(12 * cm, 4.5 * cm), dpi=300)
+    fig, ax = plt.subplots(figsize=(width * cm, height * cm), dpi=dpi)
 
     t = np.arange(num_freq) / fs
     upper = cc_mean[:num_freq] + cc_std[:num_freq]
@@ -503,6 +705,7 @@ def plot_ccf_matplotlib(
 
     fig.tight_layout(pad=0.2)
     fig.savefig(plot_file, dpi=300)
+    plt.show()
     plt.close(fig)
 
 
@@ -593,6 +796,9 @@ def plot_relative_uncertainty_matplotlib(
     fs: float,
     include_title: bool,
     plot_file: Path,
+    width: float = 12.0,
+    height: float = 8.0,
+    dpi: float = 300.0,
 ) -> None:
     """
     Plot the relative (fractional) ±1σ uncertainty for both the estimated impulse response
@@ -622,7 +828,7 @@ def plot_relative_uncertainty_matplotlib(
 
     # Start plotting
     cm = 1 / 2.54
-    fig, ax = plt.subplots(figsize=(12 * cm, 8 * cm), dpi=300)
+    fig, ax = plt.subplots(figsize=(width * cm, height * cm), dpi=dpi)
 
     # IR fractional ±1σ band
     ax.fill_between(
@@ -658,6 +864,7 @@ def plot_relative_uncertainty_matplotlib(
 
     plt.tight_layout(pad=0.2)
     plt.savefig(plot_file, dpi=300)
+    plt.show()
     plt.close(fig)
 
 
@@ -715,9 +922,70 @@ def plot_tests_target_velocity_error_plotly(
 
 
 def plot_tests_target_velocity_error_matplotlib(
+    results_df,
+    include_title_in_plots: bool,
+    plot_file: Path,
+    width: float = 12.0,
+    height: float = 8.0,
+    dpi: int = 300,
+) -> None:
+    """
+    Plot the target‐velocity error curves using Matplotlib.
+
+    Args:
+        results_df: pandas DataFrame with columns 'num_pairs', 'ccf_target_error', and 'mir_target_error'.
+        include_title_in_plots: whether to draw a title.
+        plot_file: Path to save the figure (format from suffix).
+    """
+    # publication‐quality size: 12 cm × 8 cm at 300 dpi
+    cm_to_inch = 1 / 2.54
+    fig, ax = plt.subplots(
+        figsize=(width * cm_to_inch, height * cm_to_inch),
+        dpi=dpi,
+    )
+
+    # plot CCF and Mean‐IR errors
+    ax.plot(
+        results_df["num_pairs"],
+        results_df["ccf_target_error"],
+        linewidth=1.5,
+        label="CCF",
+    )
+    ax.plot(
+        results_df["num_pairs"],
+        results_df["mir_target_error"],
+        linewidth=1.5,
+        label="Mean IR",
+    )
+
+    # labels & optional title
+    ax.set_xlabel("num pairs")
+    ax.set_ylabel("Mean mismatch")
+    if include_title_in_plots:
+        ax.set_title("Target velocity mean mismatch")
+
+    # legend & grid
+    ax.legend(loc="upper right", frameon=False)
+    ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.6)
+
+    # remove top/right spines for a cleaner look
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+
+    # layout, save, show
+    fig.tight_layout(pad=0.2)
+    fig.savefig(plot_file, dpi=300)
+    plt.show()
+    plt.close(fig)
+
+
+def plot_tests_target_velocity_error_matplotlib(
     results_df: pd.DataFrame,
     include_title_in_plots: bool,
     plot_file: Path,
+    width: float = 12.0,
+    height: float = 8.0,
+    dpi: int = 300,
 ) -> None:
     """
     Plot target velocity mean mismatch vs number of pairs using Matplotlib,
@@ -725,7 +993,7 @@ def plot_tests_target_velocity_error_matplotlib(
     """
     # Figure size: 12 cm × 8 cm
     cm = 1 / 2.54
-    fig, ax = plt.subplots(figsize=(12 * cm, 8 * cm), dpi=300)
+    fig, ax = plt.subplots(figsize=(width * cm, height * cm), dpi=dpi)
 
     x = results_df["num_pairs"]
 
@@ -755,6 +1023,7 @@ def plot_tests_target_velocity_error_matplotlib(
 
     fig.tight_layout(pad=0.2)
     fig.savefig(plot_file, dpi=300)
+    plt.show()
     plt.close(fig)
 
 
@@ -814,6 +1083,79 @@ def plot_velocity_curve(
     # Save the plot to file and show it.
     fig.write_image(plot_file)
     fig.show()
+
+
+def plot_velocity_curve_matplotlib(
+    velocity_func,
+    include_title_in_plots: bool,
+    plot_file: Path,
+    freqs=None,
+    vels=None,
+    width: float = 12.0,
+    height: float = 4.5,
+    dpi: float = 300.0,
+) -> None:
+    """
+    Plots the velocity curve using Matplotlib.
+
+    Args:
+        velocity_func: A function that maps frequency to velocity.
+        include_title_in_plots: whether to include a title.
+        plot_file: Path to save the figure (extension determines format).
+        freqs: Optional list/array of frequencies (for data points).
+        vels: Optional list/array of velocities corresponding to freqs.
+        width: Width of the figure in pixels.
+        height: Height of the figure in pixels.
+        dpi: DPI of the figure in pixels.
+    """
+    # Prepare figure at publication-quality size (e.g. ~12×4.5 cm).
+    cm_to_inch = 1 / 2.54
+    fig, ax = plt.subplots(
+        figsize=(width * cm_to_inch, height * cm_to_inch),
+        dpi=dpi,
+    )
+
+    # Smooth fitted curve
+    f_range = np.linspace(0, 10, 200)
+    velocities = velocity_func(f_range)
+    ax.plot(
+        f_range,
+        velocities,
+        color="orange",
+        linewidth=1.5,
+        label="Fitted Velocity Curve",
+    )
+
+    # Optional scatter of original data
+    if freqs is not None and vels is not None:
+        ax.scatter(
+            freqs,
+            vels,
+            color="black",
+            s=20,
+            label="Data Points",
+            zorder=5,
+        )
+
+    # Labels and title
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel("Velocity (m/s)")
+    if include_title_in_plots:
+        ax.set_title("Velocity Curve from 0 to 10 Hz")
+
+    # Legend & grid
+    ax.legend(loc="best", frameon=False)
+    ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.6)
+
+    # Clean up spines (optional)
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+
+    # Layout, save, show
+    fig.tight_layout(pad=0.2)
+    fig.savefig(plot_file, dpi=300)
+    plt.show()
+    plt.close(fig)
 
 
 def plot_misfit_with_velocity_plotly(
@@ -932,6 +1274,7 @@ def plot_misfit_with_velocity_matplotlib(
     title: str,
     include_title_in_plots: bool,
     plot_file: Path,
+    dpi: float = 300.0,
 ) -> None:
     """
     Plots a misfit heatmap with an overlaid velocity function curve using Matplotlib.
@@ -948,6 +1291,7 @@ def plot_misfit_with_velocity_matplotlib(
         title:                 Plot title.
         include_title_in_plots: Whether to include the title.
         plot_file:             Path to save the figure.
+        dpi:                   The plotn dpi
     """
     # Determine velocities array
     if isinstance(velocity_true_or_func, (int, float)):
@@ -960,7 +1304,7 @@ def plot_misfit_with_velocity_matplotlib(
     x = np.linspace(freqs[0], freqs[-1], n_f)
     y = np.linspace(min_eval_velocity, max_eval_velocity, n_v)
 
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=(8, 8), dpi=dpi)
 
     # Plot heatmap
     # Use extent to map array indices to (x, y) coordinates, origin lower so y increases upward
@@ -1002,10 +1346,11 @@ def plot_misfit_with_velocity_matplotlib(
 
     plt.tight_layout()
     plt.savefig(plot_file, dpi=300)
+    plt.show()
     plt.close()
 
 
-def plot_error_vectors(
+def plot_error_vectors_plotly(
     error_vec_ccf: np.ndarray,
     error_vec_mir: np.ndarray,
     freqs: Optional[np.ndarray],
@@ -1066,6 +1411,9 @@ def plot_error_vectors_matplotlib(
     freqs: np.ndarray = None,
     include_title_in_plots: bool = True,
     plot_file: Path = Path("error_vectors.png"),
+    width_image: float = 12.0,
+    height_image: float = 4.5,
+    dpi: float = 300.0,
 ) -> None:
     """
     Plot grouped bar charts of CCF and MIR error vectors side by side using Matplotlib.
@@ -1103,7 +1451,7 @@ def plot_error_vectors_matplotlib(
 
     # Figure size: 12 cm × 8 cm
     cm = 1 / 2.54
-    fig, ax = plt.subplots(figsize=(12 * cm, 8 * cm), dpi=300)
+    fig, ax = plt.subplots(figsize=(width_image * cm, height_image * cm), dpi=dpi)
 
     # Positions for grouped bars
     x_ccf = freqs - width / 2
@@ -1137,4 +1485,5 @@ def plot_error_vectors_matplotlib(
 
     fig.tight_layout(pad=0.2)
     fig.savefig(plot_file, dpi=300)
+    plt.show()
     plt.close(fig)

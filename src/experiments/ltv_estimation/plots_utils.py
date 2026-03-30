@@ -66,10 +66,12 @@ def plot_fir_ground_truth_components_matplotlib(
     f_linear_phase3: np.ndarray,
     plots_file: Path,
     include_title_in_plots: bool,
+    width: float = 12.0,
+    height: float = 8.0,
+    dpi: float = 300.0,
 ) -> None:
     """
-    Plot three ground-truth FIR components as variants of a base color (gt_color),
-    in a Matplotlib figure matching your publication style.
+    Plot three ground-truth FIR components as variants of a base color (gt_color).
     """
 
     # Helper to lighten a color by blending with white
@@ -86,7 +88,7 @@ def plot_fir_ground_truth_components_matplotlib(
 
     # Figure & axes
     cm = 1 / 2.54
-    fig, ax = plt.subplots(figsize=(12 * cm, 8 * cm), dpi=300)
+    fig, ax = plt.subplots(figsize=(width * cm, height * cm), dpi=dpi)
 
     x = np.arange(len(f_linear_phase1))
 
@@ -111,7 +113,7 @@ def plot_fir_ground_truth_components_matplotlib(
 
     fig.tight_layout(pad=0.2)
     fig.savefig(plots_file, dpi=300)
-    plt.close(fig)
+    plt.show()
 
 
 def plot_ltv_fir_ground_truth_3d(
@@ -165,10 +167,12 @@ def plot_ltv_fir_ground_truth_3d_matplotlib(
     ltv_ir_ground_truth: np.ndarray,
     plots_file: Path,
     include_title_in_plots: bool,
+    width: float = 9.0,
+    height: float = 8.0,
+    dpi: float = 300.0,
 ) -> None:
     """
-    3D plot of LTV FIR ground truth, using shades of base_color,
-    with extra bottom margin so axis labels aren’t cut off.
+    3D plot of LTV FIR ground truth, using shades of base_color, with extra bottom margin so axis labels aren’t cut off.
     """
 
     # Helper to lighten a color by blending with white
@@ -186,7 +190,7 @@ def plot_ltv_fir_ground_truth_3d_matplotlib(
 
     # Figure setup
     cm = 1 / 2.54
-    fig = plt.figure(figsize=(9 * cm, 8 * cm), dpi=300)
+    fig = plt.figure(figsize=(width * cm, height * cm), dpi=dpi)
     ax = fig.add_subplot(111, projection="3d")
 
     t = np.arange(num_time_steps)
@@ -217,7 +221,7 @@ def plot_ltv_fir_ground_truth_3d_matplotlib(
     fig.subplots_adjust(bottom=0.15)  # push down the bottom of the axes
 
     fig.savefig(plots_file, dpi=300)
-    plt.close(fig)
+    plt.show()
 
 
 def plot_fir_fit_and_ground_truth_plotly(
@@ -302,13 +306,16 @@ def plot_fir_fit_and_ground_truth_matplotlib(
     plots_file: Path,
     include_title_in_plots: bool,
     window_index: int = None,
+    width: float = 9.0,
+    height: float = 8.0,
+    dpi: float = 300.0,
 ) -> None:
     """
     Matplotlib 3D line plot comparing FIR ground truth and estimated coefficients.
     """
     # Figure size: 12 cm × 8 cm at 300 dpi
     cm = 1 / 2.54
-    fig = plt.figure(figsize=(9 * cm, 8 * cm), dpi=300)
+    fig = plt.figure(figsize=(width * cm, height * cm), dpi=dpi)
     ax = fig.add_subplot(111, projection="3d")
 
     T, M = fir_ground_truth.shape
@@ -356,4 +363,4 @@ def plot_fir_fit_and_ground_truth_matplotlib(
     fig.tight_layout(pad=0.2)
     fig.subplots_adjust(bottom=0.15)  # push down the bottom of the axes
     fig.savefig(plots_file, dpi=300)
-    plt.close(fig)
+    plt.show()

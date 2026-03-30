@@ -105,16 +105,17 @@ def plot_fir_fit_and_ground_truth_matplotlib(
     plots_file: Path,
     include_title_in_plots: bool,
     band_alpha: float = 0.2,
+    width: float = 12.0,
+    height: float = 8.0,
+    dpi: float = 300.0,
 ) -> None:
     """
-    Plot estimated FIR mean ±2 std (shaded), the mean line, and ground truth,
-    saving a publication-quality figure to `plots_file`.
+    Plot estimated FIR mean ±2 std (shaded), the mean line, and ground truth
     """
-    # Figure size: 12 cm × 8 cm (you can tweak)
     cm = 1 / 2.54
     fig, ax = plt.subplots(
-        figsize=(12 * cm, 8 * cm),
-        dpi=300,
+        figsize=(width * cm, height * cm),
+        dpi=dpi,
     )
 
     x = np.arange(fir_ground_truth.shape[0])
@@ -161,7 +162,7 @@ def plot_fir_fit_and_ground_truth_matplotlib(
 
     fig.tight_layout(pad=0.2)
     fig.savefig(plots_file, dpi=300)
-    plt.close(fig)
+    plt.show()
 
 
 def posterior_samples_fir_plotly(
@@ -228,15 +229,16 @@ def posterior_samples_fir_matplotlib(
     plots_file: Path,
     include_title_in_plots: bool,
     sample_alpha: float = 0.01,
+    width: float = 12.0,
+    height: float = 8.0,
+    dpi: float = 300.0,
 ) -> None:
     """
-    Plot samples from the posterior of the FIR kernel (faint lines),
-    plus the estimated mean (dashed) and ground truth (solid),
-    saving a publication‐quality figure to `plots_file`.
+    Plot samples from the posterior of the FIR kernel (faint lines), plus the estimated mean (dashed) and ground truth
+    (solid).
     """
-    # Figure size: 12 cm × 8 cm
     cm = 1 / 2.54
-    fig, ax = plt.subplots(figsize=(12 * cm, 8 * cm), dpi=300)
+    fig, ax = plt.subplots(figsize=(width * cm, height * cm), dpi=dpi)
 
     x: np.ndarray = np.arange(fir_ground_truth.shape[0])
 
@@ -284,7 +286,7 @@ def posterior_samples_fir_matplotlib(
 
     fig.tight_layout(pad=0.2)
     fig.savefig(plots_file, dpi=300)
-    plt.close(fig)
+    plt.show()
 
 
 def plot_frequency_response_plotly(
@@ -359,14 +361,15 @@ def plot_frequency_response_matplotlib(
     plots_file: Path,
     include_title_in_plots: bool,
     sample_alpha: float = 0.01,
+    width: float = 12.0,
+    height: float = 8.0,
+    dpi: float = 300.0,
 ) -> None:
     """
-    Plot frequency responses of posterior samples (faint lines),
-    plus ground truth and mean estimate, saving a publication‐quality figure.
+    Plot frequency responses of posterior samples (faint lines), plus ground truth and mean estimate.
     """
-    # Figure size: 12 cm × 8 cm
     cm: float = 1 / 2.54
-    fig, ax = plt.subplots(figsize=(12 * cm, 8 * cm), dpi=300)
+    fig, ax = plt.subplots(figsize=(width * cm, height * cm), dpi=dpi)
     i: int
 
     for i in range(samples.shape[0]):
@@ -414,7 +417,7 @@ def plot_frequency_response_matplotlib(
 
     fig.tight_layout(pad=0.2)
     fig.savefig(plots_file, dpi=300)
-    plt.close(fig)
+    plt.show()
 
 
 def plot_group_delay_plotly(
@@ -431,20 +434,13 @@ def plot_group_delay_plotly(
       • the posterior mean / MAP estimate (solid, thick)
       • the ground-truth FIR (solid, thick, different colour)
 
-    Parameters
-    ----------
-    taps : ndarray (n_samples, numtaps)
-        Each row is one FIR coefficient vector from your posterior samples.
-    fir_ground_truth : array-like (numtaps,)
-        The “true” FIR you generated data with (single vector).
-    fir_mean_est : array-like (numtaps,)
-        Your posterior mean / MAP estimate (single vector).
-    plots_file : Path
-        Where to save the static image (e.g. PNG, PDF…).
-    include_title_in_plots : bool, optional
-        If True, add a title to the figure.  Default = True.
-    opacity_samples : float, optional
-        Alpha for the many posterior-sample traces.  Default = 0.02.
+    Args:
+    taps : ndarray (n_samples, numtaps) Each row is one FIR coefficient vector from your posterior samples.
+    fir_ground_truth : array-like (numtaps,) The “true” FIR you generated data with (single vector).
+    fir_mean_est : array-like (numtaps,) Posterior mean / MAP estimate (single vector).
+    plots_file : Path Where to save the static image (e.g. PNG, PDF…).
+    include_title_in_plots : bool, optional If True, add a title to the figure.  Default = True.
+    opacity_samples : float, optional Alpha for the many posterior-sample traces.  Default = 0.02.
     """
     fig = go.Figure()
 
@@ -571,15 +567,16 @@ def plot_denoised_posterior_received_signal_matplotlib(
     plots_file: Path,
     include_title_in_plots: bool,
     sample_alpha: float = 0.01,
+    width: float = 12.0,
+    height: float = 4.5,
+    dpi: float = 300.0,
 ) -> None:
     """
-    Plot samples from the posterior of the received signal (faint lines),
-    plus the ground truth received signal and the noisy observed signal,
-    saving a publication-quality figure to `plots_file`.
+    Plot samples from the posterior of the received signal (faint lines), plus the ground truth received signal and the
+    noisy observed signal.
     """
-    # Figure size: 12 cm × 4.5 cm
     cm: float = 1 / 2.54
-    fig, ax = plt.subplots(figsize=(12 * cm, 4.5 * cm), dpi=300)
+    fig, ax = plt.subplots(figsize=(width * cm, height * cm), dpi=dpi)
 
     x: np.ndarray = np.arange(len(received))
     x_noisy: np.ndarray = np.arange(len(received_noisy))
@@ -628,7 +625,7 @@ def plot_denoised_posterior_received_signal_matplotlib(
 
     fig.tight_layout(pad=0.2)
     fig.savefig(plots_file, dpi=300)
-    plt.close(fig)
+    plt.show()
 
 
 def plot_estimated_ccf_and_posterior_samples_plotly(
@@ -705,19 +702,21 @@ def plot_estimated_ccf_and_posterior_samples_matplotlib(
     include_title_in_plots: bool,
     skip_idx: int = 100,
     sample_alpha: float = 0.01,
+    width: float = 12.0,
+    height: float = 4.5,
+    dpi: float = 300.0,
 ) -> None:
     """
     For each window [i : i+skip_idx] (i stepping 0..400):
       - plot `num_samples` posterior-sample cross-correlations (faint lines),
-      - overlay the true CCF and the noisy observed CCF,
-      - and save a publication-quality figure to `plots_file`.
+      - overlay the true CCF and the noisy observed CCF.
     """
     cm: float = 1 / 2.54  # cm→inch
     i: int
 
     for i in range(0, 400, skip_idx):
         # create new figure for this window
-        fig, ax = plt.subplots(figsize=(12 * cm, 4.5 * cm), dpi=300)
+        fig, ax = plt.subplots(figsize=(width * cm, height * cm), dpi=dpi)
         x: np.ndarray = np.arange(skip_idx)
         j: int
 
@@ -769,4 +768,4 @@ def plot_estimated_ccf_and_posterior_samples_matplotlib(
         # save and close
         save_path = plots_file.with_name(f"{plots_file.stem}_{i}{plots_file.suffix}")
         fig.savefig(save_path, dpi=300)
-        plt.close(fig)
+        plt.show()
