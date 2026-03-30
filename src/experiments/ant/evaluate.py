@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, List, Union, Callable
+from typing import Optional, Tuple, List, Union, Callable, Dict
 
 import numpy as np
 import pandas as pd
@@ -46,23 +46,48 @@ def compute_velocity_misfit(
     Returns:
         np.ndarray: A 2D array representing the velocity misfit with shape (n_velocities, len(freqs)).
     """
+    if len(freqs) < 2:
+        raise ValueError("freqs must contain at least two frequency bins.")
+
+    if n_velocities <= 0:
+        raise ValueError("n_velocities must be positive.")
+
+    if min_velocity <= 0.0 or max_velocity <= 0.0:
+        raise ValueError("Velocity bounds must be positive.")
+
+    if max_velocity < min_velocity:
+        raise ValueError("max_velocity must be greater than or equal to min_velocity.")
+
     # Determine FFT length to get exactly len(freqs) bins.
-    n_fft = 2 * (len(freqs) - 1)
+    n_fft: int = 2 * (len(freqs) - 1)
 
     # Compute the FFT with the specified n_fft.
-    f_signal = np.fft.rfft(signal_window, n=n_fft)
+    f_signal: np.ndarray = np.fft.rfft(signal_window, n=n_fft)
     # Normalize the FFT to preserve phase information.
-    f_signal /= np.abs(f_signal)
+    f_signal_magnitude: np.ndarray = np.abs(f_signal)
+    f_signal = np.divide(
+        f_signal,
+        f_signal_magnitude,
+        out=np.zeros_like(f_signal),
+        where=f_signal_magnitude != 0.0,
+    )
 
     # Create the velocity axis.
     velocity_axis = np.linspace(min_velocity, max_velocity, n_velocities)
 
     # Compute the beam pattern using the Bessel function.
     # The beam pattern is computed for each frequency (rows) and each velocity candidate (columns).
-    bf = j0(2 * np.pi * freqs[:, np.newaxis] * distance / velocity_axis)
+    bf: np.ndarray = j0(2 * np.pi * freqs[:, np.newaxis] * distance / velocity_axis)
 
     # Normalize the beam pattern using the Hilbert transform along the frequency axis.
-    bf /= np.abs(hilbert(bf, axis=0))
+    bf_magnitude: np.ndarray = np.abs(hilbert(bf, axis=0))
+
+    bf = np.divide(
+        bf,
+        bf_magnitude,
+        out=np.zeros_like(bf),
+        where=bf_magnitude != 0.0,
+    )
 
     # Compute the misfit as the absolute difference between the beam pattern (transposed)
     # and the real part of the FFT. The beam pattern is transposed to have shape
@@ -120,10 +145,17 @@ def compute_velocity_fit_statistics(
     if max_freq is None:
         max_freq = freqs.max()
 
+    if velocity_misfit.shape != (n_velocities, len(freqs)):
+        raise ValueError("velocity_misfit shape must match (n_velocities, len(freqs)).")
+
     # Create a mask to filter frequencies within the desired range.
-    freq_mask = (freqs >= min_freq) & (freqs <= max_freq)
-    tmp_subset = velocity_misfit[:, freq_mask]
-    selected_freqs = freqs[freq_mask]
+    freq_mask: np.ndarray = (freqs >= min_freq) & (freqs <= max_freq)
+
+    if not np.any(freq_mask):
+        raise ValueError("No frequencies fall within the requested range.")
+
+    tmp_subset: np.ndarray = velocity_misfit[:, freq_mask]
+    selected_freqs: np.ndarray = freqs[freq_mask]
 
     # Create candidate velocity axis.
     velocity_axis: np.ndarray = np.linspace(min_velocity, max_velocity, n_velocities)
@@ -194,10 +226,17 @@ def aggregate_ground_truth_error(
     if max_freq is None:
         max_freq = freqs.max()
 
+    if velocity_misfit.shape != (n_velocities, len(freqs)):
+        raise ValueError("velocity_misfit shape must match (n_velocities, len(freqs)).")
+
     # Create a mask to select only the frequencies within the desired range.
-    freq_mask = (freqs >= min_freq) & (freqs <= max_freq)
-    tmp_subset = velocity_misfit[:, freq_mask]
-    selected_freqs = freqs[freq_mask]
+    freq_mask: np.ndarray = (freqs >= min_freq) & (freqs <= max_freq)
+
+    if not np.any(freq_mask):
+        raise ValueError("No frequencies fall within the requested range.")
+
+    tmp_subset: np.ndarray = velocity_misfit[:, freq_mask]
+    selected_freqs: np.ndarray = freqs[freq_mask]
 
     # Create candidate velocity axis.
     velocity_axis: np.ndarray = np.linspace(min_velocity, max_velocity, n_velocities)
@@ -318,15 +357,22 @@ def pairs_to_xy(
     Returns:
         A tuple of two numpy arrays, one for the x values and one for the y values.
     """
-    n_pairs = len(filtered_pairs)
+    n_pairs: int = len(filtered_pairs)
+
     if n_pairs == 0:
         return np.array([]), np.array([])
-    window_samples = len(filtered_pairs[0][0])
+
+    window_samples: int = len(filtered_pairs[0][0])
     dtype1 = filtered_pairs[0][0].dtype
     dtype2 = filtered_pairs[0][1].dtype
     x = np.zeros((n_pairs, window_samples), dtype=dtype1)
     y = np.zeros((n_pairs, window_samples), dtype=dtype2)
+
     for i, (seg1, seg2) in enumerate(filtered_pairs):
+        if len(seg1) != window_samples or len(seg2) != window_samples:
+            raise ValueError(
+                "All segments in filtered_pairs must have the same length."
+            )
         if not swap:
             x[i] = seg1
             y[i] = seg2
@@ -393,6 +439,9 @@ def run_test(
             - model: The trained LTIE model.
             - fit_results: The results of the model fitting process.
     """
+    if len(selected_pairs) == 0:
+        raise ValueError("selected_pairs must contain at least one pair.")
+
     # Compute the cross-correlation (CCF) from the selected pairs.
     cc_mean: np.ndarray
     cc_std: np.ndarray
@@ -407,10 +456,14 @@ def run_test(
         )
 
     # Convert pairs to x and y arrays (for both forward and swapped order)
+    x1: np.ndarray
+    y1: np.ndarray
     x1, y1 = pairs_to_xy(selected_pairs, swap=False)
+    x2: np.ndarray
+    y2: np.ndarray
     x2, y2 = pairs_to_xy(selected_pairs, swap=True)
-    x = np.concatenate([x1, x2], axis=0)
-    y = np.concatenate([y1, y2], axis=0)
+    x: np.ndarray = np.concatenate([x1, x2], axis=0)
+    y: np.ndarray = np.concatenate([y1, y2], axis=0)
     # Add a channel dimension (for TensorFlow) so that x and y are shape (n_examples, window_length, 1)
     x = x[..., np.newaxis]
     y = y[..., np.newaxis]
@@ -419,48 +472,60 @@ def run_test(
         x = np.where(x >= 0, 1.0, -1.0)
         y = np.where(y >= 0, 1.0, -1.0)
 
-    # Determine batch size and how many repeats of the data are needed
-    num_examples = x.shape[0]
+    # Separate statistically independent pair count from augmented training-row count.
+    num_independent_examples: int = len(selected_pairs)
+    num_training_examples: int = x.shape[0]
 
     batch_size: int
     num_repeats: int
+
     batch_size, num_repeats = compute_uniform_batch_repetitions(
-        num_independent_examples=num_examples,
+        num_independent_examples=num_training_examples,
         batch_size_base=batch_size_base,
     )
+    additional_repeats: int = num_repeats - 1
 
     print(
-        f"Training with num_examples {num_examples}, batch size {batch_size} and {num_repeats} repeats."
+        "Training with number of independent examples: "
+        f"{num_independent_examples}, training rows (with swap augmentation): "
+        f"{num_training_examples}, batch size: {batch_size}, repeat factor per example: "
+        f"{num_repeats} (additional repeats: {additional_repeats})."
     )
 
-    warmup_steps = int(epochs * 0.04)
+    warmup_steps: int = int(epochs * 0.04)
 
-    model = get_ltie_model(
+    model: tf_keras.Sequential = get_ltie_model(
         kernel_size=kernel_size,
         initial_learning_rate=initial_learning_rate,
         target_learning_rate=target_learning_rate,
         warmup_steps=warmup_steps,
         epochs=epochs,
-        num_independent_examples_per_epoch=num_examples,
+        num_independent_examples_per_epoch=num_independent_examples,
         alpha=alpha,
         observation_noise_std=observation_noise_std,
         estimate_observation_noise_std_from_residuals=estimate_observation_noise_std_from_residuals,
     )
 
-    x_repeat = repeat_examples_for_batch(x, num_repeats)
+    x_repeat: np.ndarray = repeat_examples_for_batch(
+        array=x, num_repetitions=num_repeats
+    )
 
     # Determine the output dimension of the model
-    outdim = model(x_repeat).shape[1]
-    y_start = kernel_size // 2
-    y_end = y_start + outdim
+    outdim: int = model(x_repeat).shape[1]
+    y_start: int = kernel_size // 2
+    y_end: int = y_start + outdim
 
     # In case y does not have enough points, adjust the slicing
+    y_slice: np.ndarray
+
     if y.shape[1] < y_end:
         y_slice = y[:, :outdim, :]
     else:
         y_slice = y[:, y_start:y_end, :]
 
-    y_repeat = repeat_examples_for_batch(y_slice, num_repeats)
+    y_repeat: np.ndarray = repeat_examples_for_batch(
+        array=y_slice, num_repetitions=num_repeats
+    )
 
     # Train the model (set verbose=0 for no output)
     print(f"Training model with x {x_repeat.shape} and y {y_repeat.shape}.")
@@ -472,7 +537,7 @@ def run_test(
             ResidualObservationNoiseStdCallback(
                 x_train=x_repeat,
                 y_train=y_repeat,
-                sample_size=num_examples,
+                sample_size=num_training_examples,
                 ema_decay=observation_noise_std_ema_decay,
                 min_std=observation_noise_std_min,
                 max_std=observation_noise_std_max,
@@ -480,19 +545,21 @@ def run_test(
             )
         )
 
-    fit_results = model.fit(
+    fit_results: tf_keras.callbacks.History = model.fit(
         x_repeat,
         y_repeat,
         epochs=epochs,
         verbose=0,
         batch_size=batch_size,
-        shuffle=False,
+        shuffle=True,
         callbacks=callbacks,
     )
 
     best_train_loss = np.min(fit_results.history["loss"])
 
-    ir_mean = np.flip(model.layers[0].kernel_posterior.mean().numpy().reshape(-1))
+    ir_mean: np.ndarray = np.flip(
+        model.layers[0].kernel_posterior.mean().numpy().reshape(-1)
+    )
 
     ir_std: np.ndarray = np.flip(
         np.sqrt(model.layers[0].kernel_posterior.variance().numpy()).reshape(-1)
@@ -515,7 +582,7 @@ def evaluate_test(
     n_velocities: int,
     num: int,
     num_freq: int,
-) -> dict:
+) -> Dict[str, int | float]:
     """
     Evaluate a test by computing the velocity fit statistics using the cross-correlation and the impulse response.
 
@@ -536,15 +603,16 @@ def evaluate_test(
         num_freq: The number of frequency bins to use for the evaluation.
 
     Returns:
-        dict: A dictionary containing the evaluation results.
+        A dictionary containing the evaluation results.
     """
     # Define frequency vector (using a fixed number of frequency bins)
 
-    freqs = np.fft.rfftfreq(num_freq, 1 / fs)
-    # For the CCF model, use the first num_freq samples of the cross-correlation.
-    signal_window_cc = cc[:num_freq]
+    freqs: np.ndarray = np.fft.rfftfreq(num_freq, 1 / fs)
 
-    misfit_cc = compute_velocity_misfit(
+    # For the CCF model, use the first num_freq samples of the cross-correlation.
+    signal_window_cc: np.ndarray = cc[:num_freq]
+
+    misfit_cc: np.ndarray = compute_velocity_misfit(
         signal_window=signal_window_cc,
         freqs=freqs,
         distance=distance_rx,
@@ -554,9 +622,10 @@ def evaluate_test(
     )
 
     # For the IR model, take a segment from the estimated impulse response.
-    center_idx_ir = (len(mean_ir) - 1) // 2
-    signal_window_ir = mean_ir[center_idx_ir : center_idx_ir + num_freq]
-    misfit_ir = compute_velocity_misfit(
+    center_idx_ir: int = (len(mean_ir) - 1) // 2
+    signal_window_ir: np.ndarray = mean_ir[center_idx_ir : center_idx_ir + num_freq]
+
+    misfit_ir: np.ndarray = compute_velocity_misfit(
         signal_window=signal_window_ir,
         freqs=freqs,
         distance=distance_rx,
@@ -565,6 +634,10 @@ def evaluate_test(
         n_velocities=n_velocities,
     )
     # Compute velocity fit statistics over the full frequency range
+    est_vel_ccf: np.ndarray
+    mae_ccf: float
+    std_ccf: float
+
     est_vel_ccf, mae_ccf, std_ccf = compute_velocity_fit_statistics(
         velocity_misfit=misfit_cc,
         freqs=freqs,
@@ -575,6 +648,11 @@ def evaluate_test(
         min_freq=min_freq,
         max_freq=max_freq,
     )
+
+    est_vel_mir: np.ndarray
+    mae_mir: float
+    std_mir: float
+
     est_vel_mir, mae_mir, std_mir = compute_velocity_fit_statistics(
         velocity_misfit=misfit_ir,
         freqs=freqs,
@@ -586,6 +664,8 @@ def evaluate_test(
         max_freq=max_freq,
     )
     # Aggregate the error at the candidate velocity closest to the true velocity.
+    mean_error_ccf: float
+
     mean_error_ccf, _ = aggregate_ground_truth_error(
         velocity_misfit=misfit_cc,
         freqs=freqs,
@@ -596,6 +676,8 @@ def evaluate_test(
         min_freq=min_freq,
         max_freq=max_freq,
     )
+
+    mean_error_mir: float
 
     mean_error_mir, _ = aggregate_ground_truth_error(
         velocity_misfit=misfit_ir,
@@ -688,8 +770,16 @@ def run_all_tests(
     prop_time: float = np.ceil(distance_rx / min_prop_speed)
     kernel_size: int = int(np.ceil(fs * prop_time * 2))
 
-    results = []
+    results: List[pd.DataFrame] = []
+    num: int
+
     for num in tqdm(test_counts):
+        if num <= 0:
+            raise ValueError("Each entry in test_counts must be positive.")
+
+        if num > len(pairs):
+            raise ValueError("test_counts entries cannot exceed the number of pairs.")
+
         print(f"Running test with {num} pairs...")
         # Select the first "num" pair
         selected_pairs = pairs[:num]

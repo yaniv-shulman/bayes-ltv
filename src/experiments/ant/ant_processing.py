@@ -162,6 +162,9 @@ def compute_cross_correlation(
     Returns:
         The mean and standard deviation of the cross-correlations across pairs.
     """
+    if len(pairs) == 0:
+        raise ValueError("pairs must contain at least one signal pair.")
+
     white_pairs: List[Tuple[np.ndarray, np.ndarray]] = spectral_whiten_pairs(
         pairs=pairs
     )
@@ -188,14 +191,18 @@ def compute_uniform_batch_repetitions(
     num_independent_examples: int,
     batch_size_base: int,
 ) -> Tuple[int, int]:
-    """Compute a uniform repetition plan for a repeated optimization batch.
+    """
+    Compute a uniform repetition plan for a repeated optimization batch.
 
     Args:
-        num_independent_examples: Number of statistically independent examples.
-        batch_size_base: Requested minimum batch size for optimization.
+        num_independent_examples: Number of available training examples.
+        batch_size_base: Target optimization batch size.
 
     Returns:
-        The concrete batch size and the uniform repetition count per example.
+        The concrete batch size and the uniform repetition count per example. If
+        available examples are fewer than `batch_size_base`, examples are
+        repeated uniformly to reach at least the target. Otherwise repetition is
+        `1` and `batch_size` is capped at `batch_size_base`.
 
     Raises:
         ValueError: If the example count or batch-size target is not positive.
@@ -207,14 +214,16 @@ def compute_uniform_batch_repetitions(
         raise ValueError("batch_size_base must be positive.")
 
     if num_independent_examples < batch_size_base:
-        batch_size: int = int(
+        num_repetitions: int = int(
             np.ceil(batch_size_base / num_independent_examples)
-            * num_independent_examples
         )
-    else:
-        batch_size = num_independent_examples
 
-    return batch_size, batch_size // num_independent_examples
+        batch_size: int = int(num_repetitions * num_independent_examples)
+    else:
+        batch_size = batch_size_base
+        num_repetitions = 1
+
+    return batch_size, num_repetitions
 
 
 def repeat_examples_for_batch(array: np.ndarray, num_repetitions: int) -> np.ndarray:
@@ -232,5 +241,8 @@ def repeat_examples_for_batch(array: np.ndarray, num_repetitions: int) -> np.nda
     """
     if num_repetitions <= 0:
         raise ValueError("num_repetitions must be positive.")
+
+    if num_repetitions == 1:
+        return array
 
     return np.repeat(array, num_repetitions, axis=0)

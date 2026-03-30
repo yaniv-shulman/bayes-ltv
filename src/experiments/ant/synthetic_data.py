@@ -265,6 +265,9 @@ def velocity_curve_sinus_decaying(
     Returns:
         List of tuples, each containing the pair of signals (as numpy arrays).
     """
+    if num_pairs <= 0:
+        raise ValueError("num_pairs must be positive.")
+
     rx1: np.ndarray = np.array([0, 0])
     rx2: np.ndarray = np.array([distance_rx, 0])
 
