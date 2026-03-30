@@ -357,15 +357,15 @@ Despite these promising results, we acknowledge certain limitations that pave th
 
 For reproducibility, we summarize here the main settings used to generate the reported experiments and uncertainty visualizations; the full code, notebooks, and environment details are available at \url{https://github.com/yaniv-shulman/bayes-ltv}.
 
-\paragraph{Single-observation LTIE experiment.}
+\paragraph{\textbf{Single-observation LTIE experiment}}
 The input signal was a single series from the UCR ``Earthquakes'' dataset. The ground-truth FIR had length $16$ and was generated with \texttt{firwin} using cutoff bands $[0.25, 0.40, 0.50, 0.95]$, width $0.05$, and \texttt{pass\_zero=False}. The observed output was obtained by valid convolution followed by additive Gaussian noise with standard deviation $0.5$. The approximate posterior was a mean-field Gaussian over the convolution kernel, with prior scale parameter $\alpha=1$ (equivalently, prior standard deviation $1/\sqrt{\text{kernel\_size}}$), trained for $1500$ epochs with Adam and a cosine warmup/decay schedule, warming the learning rate from $0$ to $0.5$ over $4\%$ of the epochs. For the single-observation setting, the lone observation pair was repeated to a computational batch size of $1024$ for Monte Carlo estimation. The FIR uncertainty bands use $\pm 2$ posterior standard deviations, and the transfer-function and CCF summaries in the appendix are based on $500$ posterior samples.
 
 A repeated synthetic calibration study was also run with $100$ outer replications, known noise standard deviation $0.5$, and pointwise tapwise coverage checks for the approximate variational posterior. For $1$ independent observation pair, nominal $90\%$ and $95\%$ intervals achieved empirical coverages of $97.5\%$ and $99.4\%$, with mean interval widths $0.124$ and $0.147$. For $20$ independent pairs, both nominal levels achieved $100\%$ empirical coverage with mean widths $0.090$ and $0.107$, and for $50$ independent pairs the corresponding mean widths were $0.089$ and $0.106$. Thus, in this synthetic LTIE setting, the pointwise intervals were conservative, while uncertainty contracted substantially as more independent observations were added.
 
-\paragraph{ANT experiment.}
+\paragraph{\textbf{ANT experiment}}
 The synthetic ANT dataset comprised up to $15{,}000$ IID receiver pairs, each of length $1200$ samples, with sample rate $20$ Hz, receiver spacing $9000$ m, and additive Gaussian noise standard deviation $0.1$. Each pair was generated from $10{,}000$ decaying sinusoidal source pulses of length $50$ samples, with random amplitude in $[-1.5,1.5]$, random frequency in $[0.1,10]$ Hz, and decay constant $\tau \in [0.5,2.5]$; the target dispersive curve was anchored at $(0.1~\text{Hz},3500~\text{m/s})$, $(1~\text{Hz},3000~\text{m/s})$, and $(10~\text{Hz},1000~\text{m/s})$. The Bayesian LTIE estimator used a batch size of 2000 at minimum, $\alpha=1$, $500$ epochs, and Adam with the same $4\%$ warmup/cosine schedule and target learning rate $0.1$. In the full-precision experiment, the Gaussian data-fit weight used a residual-estimated observation-noise scale. Performance was evaluated for $1000,2000,\ldots,15000$ pairs, on a velocity grid from $500$ to $5000$ m/s with $226$ points and a frequency grid from $0.1$ to $3.0$ Hz with $300$ points. The standard experiment in the main text did not use 1-bit quantization, and the Bayesian MIR was trained directly on non-whitened signal pairs. For the 1-bit experiment, the same settings were used except that the batch size was increased to $4000$. The velocity-misfit uncertainty bands are pointwise $2.5\%$--$97.5\%$ sample percentiles.
 
-\paragraph{LTV experiment.}
+\paragraph{\textbf{LTV experiment}}
 The ground-truth time-varying FIR used $16$ taps and was formed by smoothly interpolating between three FIRs generated with \texttt{firwin} cutoffs $[0.05,0.4,0.6,0.95]$, $[0.2,0.93]$, and $[0.09,0.89]$, each with width $0.05$ and \texttt{pass\_zero=False}. The observed signal used additive Gaussian noise with standard deviation $0.2$. Local inference windows had length $32$ and were extracted at unit stride; the $291$ unique windows were tiled twice for training, yielding tensors of shapes $(582,32,1)$, $(582,32,16)$, and $(582,32)$. The amortized variational model used $64$ initial CNN filters and a GP prior with RBF amplitude $2.0$, length scale $16$, kernel jitter $10^{-5}$, and KL scaling $5 \times 10^{-5}$. Training used Adam with cosine warmup/decay from learning rate $0$ to $0.003$, warmup over $4\%$ of $7000$ epochs, and full-batch optimization. The final global estimate was formed by averaging overlapping local impulse-response predictions during stitching.
 
 \section{Impulse Response Regression from a Single Observation}
@@ -413,31 +413,35 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
 
 \begin{figure}[!ht]
     \centering
-    \begin{subfigure}[b]{0.48\textwidth}
+    \begin{subfigure}[b]{0.9\textwidth}
         \includegraphics[width=\linewidth]{ltie_experiment1_samples_posterior_ccf_regression_vs_noisy_matplotlib_0.png}
         \subcaption{Zoom on lags near 0.}
         \label{fig:app:xcorr_zoom0}
     \end{subfigure}
-    \hfill % Adds horizontal space
-    \begin{subfigure}[b]{0.48\textwidth}
+
+    \vspace{1em}
+
+    \begin{subfigure}[b]{0.9\textwidth}
         \includegraphics[width=\linewidth]{ltie_experiment1_samples_posterior_ccf_regression_vs_noisy_matplotlib_100.png}
         \subcaption{Zoom on lags near 100.}
         \label{fig:app:xcorr_zoom100}
-    \end{subfigure}   
-    
-    \vspace{1em} % Adds some vertical space between rows
+    \end{subfigure}
 
-    \begin{subfigure}[b]{0.48\textwidth}
+    \vspace{1em}
+
+    \begin{subfigure}[b]{0.9\textwidth}
         \includegraphics[width=\linewidth]{ltie_experiment1_samples_posterior_ccf_regression_vs_noisy_matplotlib_200.png}
         \subcaption{Zoom on lags near 200.}
         \label{fig:app:xcorr_zoom200}
     \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
+
+    \vspace{1em}
+
+    \begin{subfigure}[b]{0.9\textwidth}
         \includegraphics[width=\linewidth]{ltie_experiment1_samples_posterior_ccf_regression_vs_noisy_matplotlib_300.png}
         \subcaption{Zoom on lags near 300.}
         \label{fig:app:xcorr_zoom300}
-    \end{subfigure} 
+    \end{subfigure}
     
     \caption{Samples from the posterior distribution of the cross-correlation function (CCF) for the single-observation experiment. These plots show the estimated CCF distribution (green) robustly matching the ground truth (orange) while providing a credible interval, in contrast to the noisy observed CCF (red). Each panel shows a zoomed-in view of a different lag region.}
     \label{fig:app:xcorr_all} % A single label for the whole figure
@@ -486,7 +490,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
         \caption{Velocity misfit map for the classical CCF estimate. The green line is the ground-truth velocity.}
         \label{fig:ant_misfit_map_ccf}
     \end{subfigure}
-    
+
     \medskip % Adds some vertical space between the plots
 
     %--- Bottom Plot: MIR Misfit Map ---
@@ -496,7 +500,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
         \caption{Velocity misfit map for the Bayesian MIR estimate. The green line is the ground-truth velocity.}
         \label{fig:ant_misfit_map_mir}
     \end{subfigure}
-    
+
     \caption{Comparison of velocity misfit maps for (a) the classical CCF and (b) the Bayesian MIR methods. The misfit (error) is shown in greyscale, where darker shades indicate higher error. The Bayesian MIR shows a lower error margin around the ground-truth velocity curve (green), particularly at lower frequencies, and its low-misfit valley extends more smoothly into the higher frequency range (up to 3Hz). This leads to a more accurate and robust final velocity estimation.}
     \label{fig:ant_misfit_maps_comparison}
 \end{figure}
