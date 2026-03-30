@@ -109,6 +109,22 @@ def test_velocity_curve_sinus_decaying_invalid_num_workers_raises() -> None:
         )
 
 
+def test_velocity_curve_sinus_decaying_non_positive_num_pairs_raise() -> None:
+    random_generator: np.random.Generator = np.random.default_rng(11)
+
+    with pytest.raises(ValueError, match="num_pairs must be positive"):
+        target.velocity_curve_sinus_decaying(
+            num_pairs=0,
+            sequence_length=256,
+            distance_rx=900.0,
+            freq_velocity_pairs=3000.0,
+            random_generator=random_generator,
+            num_sources=8,
+            pulse_length=20,
+            num_workers=1,
+        )
+
+
 def test_generate_velocity_curve_pair_missing_constant_velocity_raises() -> None:
     base_source_positions: np.ndarray = np.array([[1.0, 0.0], [0.0, 1.0]])
     rx1: np.ndarray = np.array([0.0, 0.0])

@@ -23,6 +23,51 @@ def test_compute_velocity_misfit_returns_expected_shape() -> None:
     assert np.all(np.isfinite(actual))
 
 
+def test_compute_velocity_misfit_handles_zero_spectrum_without_non_finite_values() -> (
+    None
+):
+    signal_window: np.ndarray = np.zeros(8)
+    freqs: np.ndarray = np.fft.rfftfreq(8, d=1.0)
+
+    actual: np.ndarray = target.compute_velocity_misfit(
+        signal_window=signal_window,
+        freqs=freqs,
+        distance=1000.0,
+        min_velocity=1500.0,
+        max_velocity=3500.0,
+        n_velocities=4,
+    )
+
+    assert np.all(np.isfinite(actual))
+
+
+@pytest.mark.parametrize(
+    "freqs,n_velocities,min_velocity,max_velocity,error_pattern",
+    [
+        (np.array([0.0]), 4, 1500.0, 3500.0, "at least two frequency bins"),
+        (np.array([0.0, 1.0]), 0, 1500.0, 3500.0, "n_velocities must be positive"),
+        (np.array([0.0, 1.0]), 4, -1.0, 3500.0, "Velocity bounds must be positive"),
+        (np.array([0.0, 1.0]), 4, 3500.0, 1500.0, "max_velocity must be greater"),
+    ],
+)
+def test_compute_velocity_misfit_invalid_inputs_raise(
+    freqs: np.ndarray,
+    n_velocities: int,
+    min_velocity: float,
+    max_velocity: float,
+    error_pattern: str,
+) -> None:
+    with pytest.raises(ValueError, match=error_pattern):
+        target.compute_velocity_misfit(
+            signal_window=np.ones(8),
+            freqs=freqs,
+            distance=1000.0,
+            min_velocity=min_velocity,
+            max_velocity=max_velocity,
+            n_velocities=n_velocities,
+        )
+
+
 def test_compute_velocity_fit_statistics_constant_velocity() -> None:
     velocity_misfit: np.ndarray = np.array(
         [
@@ -47,6 +92,34 @@ def test_compute_velocity_fit_statistics_constant_velocity() -> None:
     np.testing.assert_allclose(actual_velocities, expected_velocities)
     assert actual_mae == pytest.approx(np.mean(np.abs(expected_error)))
     assert actual_std == pytest.approx(np.std(expected_error))
+
+
+def test_compute_velocity_fit_statistics_invalid_shape_raises() -> None:
+    with pytest.raises(ValueError, match="shape must match"):
+        target.compute_velocity_fit_statistics(
+            velocity_misfit=np.ones((2, 3)),
+            freqs=np.array([1.0, 2.0, 3.0]),
+            min_velocity=100.0,
+            max_velocity=300.0,
+            n_velocities=3,
+            velocity_true_or_func=200.0,
+        )
+
+
+def test_compute_velocity_fit_statistics_empty_frequency_range_raises() -> None:
+    with pytest.raises(
+        ValueError, match="No frequencies fall within the requested range"
+    ):
+        target.compute_velocity_fit_statistics(
+            velocity_misfit=np.ones((3, 3)),
+            freqs=np.array([1.0, 2.0, 3.0]),
+            min_velocity=100.0,
+            max_velocity=300.0,
+            n_velocities=3,
+            velocity_true_or_func=200.0,
+            min_freq=10.0,
+            max_freq=11.0,
+        )
 
 
 def test_aggregate_ground_truth_error_returns_selected_freqs_when_requested() -> None:
@@ -110,6 +183,34 @@ def test_aggregate_ground_truth_error_callable_velocity() -> None:
     assert actual_mean == pytest.approx(np.mean(expected_vector))
 
 
+def test_aggregate_ground_truth_error_invalid_shape_raises() -> None:
+    with pytest.raises(ValueError, match="shape must match"):
+        target.aggregate_ground_truth_error(
+            velocity_misfit=np.ones((2, 3)),
+            freqs=np.array([1.0, 2.0, 3.0]),
+            min_velocity=100.0,
+            max_velocity=300.0,
+            n_velocities=3,
+            velocity_true_or_func=200.0,
+        )
+
+
+def test_aggregate_ground_truth_error_empty_frequency_range_raises() -> None:
+    with pytest.raises(
+        ValueError, match="No frequencies fall within the requested range"
+    ):
+        target.aggregate_ground_truth_error(
+            velocity_misfit=np.ones((3, 3)),
+            freqs=np.array([1.0, 2.0, 3.0]),
+            min_velocity=100.0,
+            max_velocity=300.0,
+            n_velocities=3,
+            velocity_true_or_func=200.0,
+            min_freq=10.0,
+            max_freq=11.0,
+        )
+
+
 def test_compute_posterior_velocity_misfit_stats_shapes() -> None:
     freqs: np.ndarray = np.fft.rfftfreq(10, d=1.0)
     posterior_ir_samples: np.ndarray = np.array(
@@ -167,6 +268,16 @@ def test_pairs_to_xy_swap_controls_assignment() -> None:
     )
     np.testing.assert_array_equal(actual_x_swap, np.array([[10.0, 20.0], [30.0, 40.0]]))
     np.testing.assert_array_equal(actual_y_swap, np.array([[1.0, 2.0], [3.0, 4.0]]))
+
+
+def test_pairs_to_xy_mismatched_segment_lengths_raise() -> None:
+    pairs: List[Tuple[np.ndarray, np.ndarray]] = [
+        (np.array([1.0, 2.0]), np.array([10.0, 20.0])),
+        (np.array([3.0]), np.array([30.0])),
+    ]
+
+    with pytest.raises(ValueError, match="same length"):
+        target.pairs_to_xy(filtered_pairs=pairs, swap=False)
 
 
 def test_run_all_tests_uses_run_test_and_evaluate_test(
@@ -319,6 +430,23 @@ def test_run_test_does_not_whiten_mir_when_disabled(
     assert fake_model.fit_kwargs["callbacks"] == []
 
 
+def test_run_test_empty_pairs_raise() -> None:
+    with pytest.raises(
+        ValueError, match="selected_pairs must contain at least one pair"
+    ):
+        target.run_test(
+            selected_pairs=[],
+            epochs=1,
+            kernel_size=3,
+            batch_size_base=2,
+            initial_learning_rate=0.001,
+            target_learning_rate=0.001,
+            alpha=None,
+            one_bit_quantization=False,
+            spectral_whitening_mir=False,
+        )
+
+
 def test_run_test_adds_residual_noise_callback_when_enabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -400,3 +528,275 @@ def test_run_test_adds_residual_noise_callback_when_enabled(
 
     assert len(fake_model.fit_callbacks) == 1
     assert isinstance(fake_model.fit_callbacks[0], _DummyCallback)
+
+
+def test_run_test_uses_augmented_row_count_for_batch_planning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pairs: List[Tuple[np.ndarray, np.ndarray]] = [
+        (np.array([1.0, 0.0, -1.0, 0.5]), np.array([0.5, -0.25, 0.125, -0.0625]))
+    ]
+
+    class _FakeTensor:
+        def __init__(self, data: np.ndarray) -> None:
+            self._data: np.ndarray = data
+
+        def numpy(self) -> np.ndarray:
+            return self._data
+
+    class _FakeKernelPosterior:
+        def mean(self) -> _FakeTensor:
+            return _FakeTensor(np.array([1.0, 2.0, 3.0]))
+
+        def variance(self) -> _FakeTensor:
+            return _FakeTensor(np.array([1.0, 4.0, 9.0]))
+
+    class _FakeLayer:
+        def __init__(self) -> None:
+            self.kernel_posterior: _FakeKernelPosterior = _FakeKernelPosterior()
+
+    class _FakeFitResults:
+        def __init__(self) -> None:
+            self.history: Dict[str, List[float]] = {"loss": [2.0, 1.0]}
+
+    class _FakeModel:
+        def __init__(self) -> None:
+            self.layers: List[_FakeLayer] = [_FakeLayer()]
+            self.fit_batch_size: int = 0
+            self.fit_num_rows: int = 0
+
+        def __call__(self, x: np.ndarray, training: bool = False) -> np.ndarray:
+            del training
+            return np.zeros((x.shape[0], 2, 1), dtype=float)
+
+        def fit(
+            self,
+            x: np.ndarray,
+            y: np.ndarray,
+            epochs: int,
+            verbose: int,
+            batch_size: int,
+            shuffle: bool,
+            callbacks: List[object],
+        ) -> _FakeFitResults:
+            del y, epochs, verbose, shuffle, callbacks
+            self.fit_batch_size = batch_size
+            self.fit_num_rows = x.shape[0]
+            return _FakeFitResults()
+
+    fake_model: _FakeModel = _FakeModel()
+
+    monkeypatch.setattr(
+        target,
+        "compute_cross_correlation",
+        lambda pairs, one_bit_quantization: (np.ones(4), np.zeros(4)),
+    )
+    monkeypatch.setattr(target, "get_ltie_model", lambda **kwargs: fake_model)
+
+    target.run_test(
+        selected_pairs=pairs,
+        epochs=1,
+        kernel_size=3,
+        batch_size_base=2,
+        initial_learning_rate=0.001,
+        target_learning_rate=0.001,
+        alpha=None,
+        one_bit_quantization=False,
+        spectral_whitening_mir=False,
+    )
+
+    assert fake_model.fit_num_rows == 2
+    assert fake_model.fit_batch_size == 2
+
+
+def test_run_test_whitening_and_one_bit_do_not_mutate_selected_pairs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected_pairs: List[Tuple[np.ndarray, np.ndarray]] = [
+        (
+            np.array([0.1, -0.2, 0.3, -0.4, 0.5, -0.6], dtype=float),
+            np.array([-0.7, 0.8, -0.9, 1.0, -1.1, 1.2], dtype=float),
+        )
+    ]
+    original_refs: List[Tuple[np.ndarray, np.ndarray]] = [
+        (a, b) for a, b in selected_pairs
+    ]
+    expected_pairs: List[Tuple[np.ndarray, np.ndarray]] = [
+        (a.copy(), b.copy()) for a, b in selected_pairs
+    ]
+
+    class _FakeTensor:
+        def __init__(self, data: np.ndarray) -> None:
+            self._data: np.ndarray = data
+
+        def numpy(self) -> np.ndarray:
+            return self._data
+
+    class _FakeKernelPosterior:
+        def mean(self) -> _FakeTensor:
+            return _FakeTensor(np.array([1.0, 2.0, 3.0]))
+
+        def variance(self) -> _FakeTensor:
+            return _FakeTensor(np.array([1.0, 4.0, 9.0]))
+
+    class _FakeLayer:
+        def __init__(self) -> None:
+            self.kernel_posterior: _FakeKernelPosterior = _FakeKernelPosterior()
+
+    class _FakeFitResults:
+        def __init__(self) -> None:
+            self.history: Dict[str, List[float]] = {"loss": [2.0, 1.0]}
+
+    class _FakeModel:
+        def __init__(self) -> None:
+            self.layers: List[_FakeLayer] = [_FakeLayer()]
+
+        def __call__(self, x: np.ndarray, training: bool = False) -> np.ndarray:
+            del training
+            return np.zeros((x.shape[0], 2, 1), dtype=float)
+
+        def fit(
+            self,
+            x: np.ndarray,
+            y: np.ndarray,
+            epochs: int,
+            verbose: int,
+            batch_size: int,
+            shuffle: bool,
+            callbacks: List[object],
+        ) -> _FakeFitResults:
+            del x, y, epochs, verbose, batch_size, shuffle, callbacks
+            return _FakeFitResults()
+
+    fake_model: _FakeModel = _FakeModel()
+    monkeypatch.setattr(target, "get_ltie_model", lambda **kwargs: fake_model)
+
+    target.run_test(
+        selected_pairs=selected_pairs,
+        epochs=1,
+        kernel_size=3,
+        batch_size_base=2,
+        initial_learning_rate=0.001,
+        target_learning_rate=0.001,
+        alpha=None,
+        one_bit_quantization=True,
+        spectral_whitening_mir=True,
+    )
+
+    for i, expected in enumerate(expected_pairs):
+        assert selected_pairs[i][0] is original_refs[i][0]
+        assert selected_pairs[i][1] is original_refs[i][1]
+        np.testing.assert_array_equal(selected_pairs[i][0], expected[0])
+        np.testing.assert_array_equal(selected_pairs[i][1], expected[1])
+
+
+def test_run_test_4000_pairs_uses_augmented_rows_for_batch_size_and_print(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pairs: List[Tuple[np.ndarray, np.ndarray]] = [
+        (np.array([1.0, 0.0, -1.0, 0.5]), np.array([0.5, -0.25, 0.125, -0.0625]))
+        for _ in range(4000)
+    ]
+
+    class _FakeTensor:
+        def __init__(self, data: np.ndarray) -> None:
+            self._data: np.ndarray = data
+
+        def numpy(self) -> np.ndarray:
+            return self._data
+
+    class _FakeKernelPosterior:
+        def mean(self) -> _FakeTensor:
+            return _FakeTensor(np.array([1.0, 2.0, 3.0]))
+
+        def variance(self) -> _FakeTensor:
+            return _FakeTensor(np.array([1.0, 4.0, 9.0]))
+
+    class _FakeLayer:
+        def __init__(self) -> None:
+            self.kernel_posterior: _FakeKernelPosterior = _FakeKernelPosterior()
+
+    class _FakeFitResults:
+        def __init__(self) -> None:
+            self.history: Dict[str, List[float]] = {"loss": [2.0, 1.0]}
+
+    class _FakeModel:
+        def __init__(self) -> None:
+            self.layers: List[_FakeLayer] = [_FakeLayer()]
+            self.fit_batch_size: int = 0
+            self.fit_num_rows: int = 0
+
+        def __call__(self, x: np.ndarray, training: bool = False) -> np.ndarray:
+            del training
+            return np.zeros((x.shape[0], 2, 1), dtype=float)
+
+        def fit(
+            self,
+            x: np.ndarray,
+            y: np.ndarray,
+            epochs: int,
+            verbose: int,
+            batch_size: int,
+            shuffle: bool,
+            callbacks: List[object],
+        ) -> _FakeFitResults:
+            del y, epochs, verbose, shuffle, callbacks
+            self.fit_batch_size = batch_size
+            self.fit_num_rows = x.shape[0]
+            return _FakeFitResults()
+
+    fake_model: _FakeModel = _FakeModel()
+
+    monkeypatch.setattr(
+        target,
+        "compute_cross_correlation",
+        lambda pairs, one_bit_quantization: (np.ones(4), np.zeros(4)),
+    )
+    monkeypatch.setattr(target, "get_ltie_model", lambda **kwargs: fake_model)
+
+    target.run_test(
+        selected_pairs=pairs,
+        epochs=1,
+        kernel_size=3,
+        batch_size_base=4000,
+        initial_learning_rate=0.001,
+        target_learning_rate=0.001,
+        alpha=None,
+        one_bit_quantization=False,
+        spectral_whitening_mir=False,
+    )
+
+    actual_stdout: str = capsys.readouterr().out
+    assert "training rows (with swap augmentation): 8000" in actual_stdout
+    assert "batch size: 4000" in actual_stdout
+    assert fake_model.fit_num_rows == 8000
+    assert fake_model.fit_batch_size == 4000
+
+
+def test_run_all_tests_invalid_requested_count_raises() -> None:
+    pairs: List[Tuple[np.ndarray, np.ndarray]] = [
+        (np.ones(12), np.ones(12)) for _ in range(2)
+    ]
+
+    with pytest.raises(ValueError, match="cannot exceed the number of pairs"):
+        target.run_all_tests(
+            pairs=pairs,
+            test_counts=[3],
+            fs=20.0,
+            distance_rx=500.0,
+            velocity_true_or_func=3000.0,
+            batch_size_base=4,
+            epochs=1,
+            initial_learning_rate=0.001,
+            target_learning_rate=0.001,
+            alpha=None,
+            min_prop_speed=1500.0,
+            min_eval_velocity=1000.0,
+            max_eval_velocity=4000.0,
+            n_velocities=5,
+            min_freq=0.1,
+            max_freq=8.0,
+            num_freq=8,
+            one_bit_quantization=False,
+            spectral_whitening_mir=False,
+        )

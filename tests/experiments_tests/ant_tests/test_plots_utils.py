@@ -17,7 +17,9 @@ def test_plot_error_vectors_mismatched_lengths_raise(test_artifacts_dir: Path) -
         )
 
 
-def test_plot_error_vectors_freq_length_mismatch_raises(test_artifacts_dir: Path) -> None:
+def test_plot_error_vectors_freq_length_mismatch_raises(
+    test_artifacts_dir: Path,
+) -> None:
     with pytest.raises(ValueError, match="freqs length must match"):
         target.plot_error_vectors(
             error_vec_ccf=np.array([1.0, 2.0]),
@@ -37,7 +39,9 @@ def test_plot_error_vectors_matplotlib_freq_length_mismatch_raises(
             error_vec_mir=np.array([3.0, 4.0]),
             freqs=np.array([1.0]),
             include_title_in_plots=False,
-            plot_file=test_artifacts_dir.joinpath("ant_plot_freq_mismatch_matplotlib.png"),
+            plot_file=test_artifacts_dir.joinpath(
+                "ant_plot_freq_mismatch_matplotlib.png"
+            ),
         )
 
 
@@ -49,7 +53,9 @@ def test_plot_error_vectors_and_matplotlib_success_paths(
         target.go.Figure, "write_image", lambda self, *args, **kwargs: None
     )
     monkeypatch.setattr(target.go.Figure, "show", lambda self, *args, **kwargs: None)
-    monkeypatch.setattr(target.plt.Figure, "savefig", lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(
+        target.plt.Figure, "savefig", lambda self, *args, **kwargs: None
+    )
     monkeypatch.setattr(target.plt, "close", lambda *args, **kwargs: None)
 
     target.plot_error_vectors(

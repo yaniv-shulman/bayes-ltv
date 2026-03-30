@@ -98,12 +98,48 @@ def test_compute_cross_correlation_without_one_bit_matches_manual(
     np.testing.assert_allclose(actual_std, expected_arr.std(axis=0))
 
 
+def test_compute_cross_correlation_one_bit_does_not_mutate_input_pairs() -> None:
+    pairs: List[Tuple[np.ndarray, np.ndarray]] = [
+        (
+            np.array([0.1, -0.2, 0.3, -0.4, 0.5, -0.6]),
+            np.array([-0.7, 0.8, -0.9, 1.0, -1.1, 1.2]),
+        ),
+        (
+            np.array([1.1, -1.2, 1.3, -1.4, 1.5, -1.6]),
+            np.array([-1.7, 1.8, -1.9, 2.0, -2.1, 2.2]),
+        ),
+    ]
+    original_refs: List[Tuple[np.ndarray, np.ndarray]] = [(a, b) for a, b in pairs]
+    expected_pairs: List[Tuple[np.ndarray, np.ndarray]] = [
+        (a.copy(), b.copy()) for a, b in pairs
+    ]
+
+    # Arrange/Act/Assert
+    actual_mean, actual_std = target.compute_cross_correlation(
+        pairs=pairs,
+        one_bit_quantization=True,
+    )
+
+    assert actual_mean.shape == pairs[0][0].shape
+    assert actual_std.shape == pairs[0][0].shape
+    for i, expected in enumerate(expected_pairs):
+        assert pairs[i][0] is original_refs[i][0]
+        assert pairs[i][1] is original_refs[i][1]
+        np.testing.assert_array_equal(pairs[i][0], expected[0])
+        np.testing.assert_array_equal(pairs[i][1], expected[1])
+
+
+def test_compute_cross_correlation_empty_pairs_raise() -> None:
+    with pytest.raises(ValueError, match="at least one signal pair"):
+        target.compute_cross_correlation(pairs=[], one_bit_quantization=False)
+
+
 @pytest.mark.parametrize(
     "num_independent_examples,batch_size_base,expected_batch,expected_repetitions",
     [
         (3, 8, 9, 3),
         (8, 8, 8, 1),
-        (9, 8, 9, 1),
+        (9, 8, 8, 1),
     ],
 )
 def test_compute_uniform_batch_repetitions_success(

@@ -56,11 +56,11 @@ def test_calculate_naive_phase_velocity_sets_invalid_entries_to_nan() -> None:
     assert np.isnan(actual[2])
 
 
-def test_posterior_phase_velocities_filters_low_velocity_samples() -> None:
+def test_posterior_phase_velocities_returns_summary_for_valid_samples() -> None:
     phase_samples: np.ndarray = np.array(
         [
-            [-10.0, -10.0, -10.0],  # will be filtered for eps=1.0
-            [-0.1, -0.1, -0.1],  # valid
+            [-2.0, -2.0, -2.0],  # valid
+            [-3.0, -3.0, -3.0],  # valid
         ]
     )
     w_hat: np.ndarray = np.array([0.5, 1.0, 2.0])
@@ -76,20 +76,49 @@ def test_posterior_phase_velocities_filters_low_velocity_samples() -> None:
     )
 
     actual_samples: np.ndarray = actual[0]
-    assert actual_samples.shape[0] == 1
-    assert np.all(np.isnan(actual[1]))
+    assert actual_samples.shape[0] == 2
+    assert np.all(np.isfinite(actual[1]))
 
 
-def test_posterior_phase_velocities_no_valid_samples_raise() -> None:
-    phase_samples: np.ndarray = np.array([[-10.0, -10.0], [-20.0, -20.0]])
+def test_posterior_phase_velocities_non_finite_sample_raise() -> None:
+    phase_samples: np.ndarray = np.array([[-0.1, -0.1], [-2.0, -2.0]])
     w_hat: np.ndarray = np.array([1.0, 2.0])
 
-    with pytest.raises(ValueError, match="No samples in phase_velocity_samples"):
+    with pytest.raises(
+        ValueError, match="contains non-finite values above min_frequency"
+    ):
         target.posterior_phase_velocities(
             phase_samples=phase_samples,
             distance=1.0,
             eps=1.0,
             min_frequency=0.5,
             w_hat=w_hat,
+            signal_window_phase_response_mean=np.array([-1.0, -1.0]),
+        )
+
+
+def test_posterior_phase_velocities_sample_below_eps_raise() -> None:
+    phase_samples: np.ndarray = np.array([[-10.0, -10.0], [-2.0, -2.0]])
+    w_hat: np.ndarray = np.array([1.0, 2.0])
+
+    with pytest.raises(ValueError, match="falls below eps above min_frequency"):
+        target.posterior_phase_velocities(
+            phase_samples=phase_samples,
+            distance=1.0,
+            eps=1.0,
+            min_frequency=0.5,
+            w_hat=w_hat,
+            signal_window_phase_response_mean=np.array([-1.0, -1.0]),
+        )
+
+
+def test_posterior_phase_velocities_no_frequencies_above_threshold_raise() -> None:
+    with pytest.raises(ValueError, match="No frequencies exceed min_frequency"):
+        target.posterior_phase_velocities(
+            phase_samples=np.array([[-2.0, -2.0]]),
+            distance=1.0,
+            eps=1.0,
+            min_frequency=10.0,
+            w_hat=np.array([1.0, 2.0]),
             signal_window_phase_response_mean=np.array([-1.0, -1.0]),
         )
