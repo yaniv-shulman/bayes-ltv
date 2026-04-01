@@ -1,4 +1,4 @@
-\documentclass[final,1p,times,authoryear]{elsarticle}
+\documentclass[preprint,1p,times,authoryear]{elsarticle}
 
 \usepackage{booktabs}
 
@@ -14,16 +14,26 @@
 \usepackage{amssymb}
 \usepackage{commath}
 \usepackage{mathtools}
+\usepackage{lineno}
 \usepackage{subcaption}
 \usepackage{float}
 \usepackage{natbib}
 \usepackage{hyperref}
+
+\linenumbers
 
 \graphicspath{ {./graphics/} }
 
 \begin{document}
 
 \begin{frontmatter}
+
+\vspace*{\fill}
+\begin{center}
+This is a draft version of work in progress, content will be revisited in subsequent versions.
+\end{center}
+\vspace*{\fill}
+
 \title{Bayesian Modeling and Estimation of Linear Time-Varying Systems using Neural Networks and Gaussian Processes}
 \author{Yaniv Shulman}
 \ead{yaniv@shulman.info}
@@ -372,7 +382,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\linewidth]{ltie_experiment1_all_signals_matplotlib.png}
+\includegraphics[width=\linewidth]{graphics/ltie_experiment1_all_signals_matplotlib}
 \caption{The synthetic data used for experiment one- impulse response regression from a single observation.}
 \label{fig:experiment1_a_all_data}
 \end{figure}
@@ -380,7 +390,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\linewidth]{ltie_experiment1_samples_posterior_received_regression_vs_ground_truth_matplotlib.png}
+\includegraphics[width=\linewidth]{graphics/ltie_experiment1_samples_posterior_received_regression_vs_ground_truth_matplotlib}
 \caption{Denoising performance of the Bayesian model in the single-observation experiment. The figure shows the posterior predictive distribution for the received signal, $\hat{g}[n]$ (a collection of green samples). By learning the impulse response, the model generates predictions that accurately reconstruct the clean signal while filtering the noise from the original observation.}
 \label{fig:denoising_performance} 
 \end{figure}
@@ -389,13 +399,13 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
 \begin{figure}[!ht]
     \centering
     \begin{subfigure}[b]{.47\linewidth}
-        \includegraphics[width=\linewidth]{ltie_experiment1_fir_estimate_matplotlib.png}
+        \includegraphics[width=\linewidth]{graphics/ltie_experiment1_fir_estimate_matplotlib}
         \subcaption{The posterior mean (blue dashed line) of the estimated impulse response tracks the ground truth (orange). The shaded region shows the posterior mean $\pm 2$ posterior standard deviations.}
         \label{fig:experiment1_a_samples_posterior_ir_estimate}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{.47\linewidth}
-        \includegraphics[width=\linewidth]{ltie_experiment1_samples_posterior_ir_matplotlib.png}
+        \includegraphics[width=\linewidth]{graphics/ltie_experiment1_samples_posterior_ir_matplotlib}
         \subcaption{Individual samples drawn from the posterior distribution (blue lines), illustrating the model's uncertainty around the ground truth impulse response (orange).}
         \label{fig:experiment1_a_samples_posterior_ir_samples}
     \end{subfigure}
@@ -404,7 +414,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
 
 \begin{figure}[!ht]
     \centering
-        \includegraphics[width=\linewidth]{ltie_experiment1_samples_posterior_freq_matplotlib.png}
+        \includegraphics[width=\linewidth]{graphics/ltie_experiment1_samples_posterior_freq_matplotlib}
         
     \caption{Propagation of uncertainty into the frequency domain. The variational posterior distribution over the impulse response induces a corresponding approximate posterior over the system's frequency and phase response, allowing for comprehensive uncertainty analysis.}
     \label{fig:experiment1_a_samples_posterior_freq}
@@ -414,7 +424,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
 \begin{figure}[!ht]
     \centering
     \begin{subfigure}[b]{0.9\textwidth}
-        \includegraphics[width=\linewidth]{ltie_experiment1_samples_posterior_ccf_regression_vs_noisy_matplotlib_0.png}
+        \includegraphics[width=\linewidth]{graphics/ltie_experiment1_samples_posterior_ccf_regression_vs_noisy_matplotlib_0}
         \subcaption{Zoom on lags near 0.}
         \label{fig:app:xcorr_zoom0}
     \end{subfigure}
@@ -422,7 +432,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
     \vspace{1em}
 
     \begin{subfigure}[b]{0.9\textwidth}
-        \includegraphics[width=\linewidth]{ltie_experiment1_samples_posterior_ccf_regression_vs_noisy_matplotlib_100.png}
+        \includegraphics[width=\linewidth]{graphics/ltie_experiment1_samples_posterior_ccf_regression_vs_noisy_matplotlib_100}
         \subcaption{Zoom on lags near 100.}
         \label{fig:app:xcorr_zoom100}
     \end{subfigure}
@@ -430,7 +440,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
     \vspace{1em}
 
     \begin{subfigure}[b]{0.9\textwidth}
-        \includegraphics[width=\linewidth]{ltie_experiment1_samples_posterior_ccf_regression_vs_noisy_matplotlib_200.png}
+        \includegraphics[width=\linewidth]{graphics/ltie_experiment1_samples_posterior_ccf_regression_vs_noisy_matplotlib_200}
         \subcaption{Zoom on lags near 200.}
         \label{fig:app:xcorr_zoom200}
     \end{subfigure}
@@ -438,7 +448,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
     \vspace{1em}
 
     \begin{subfigure}[b]{0.9\textwidth}
-        \includegraphics[width=\linewidth]{ltie_experiment1_samples_posterior_ccf_regression_vs_noisy_matplotlib_300.png}
+        \includegraphics[width=\linewidth]{graphics/ltie_experiment1_samples_posterior_ccf_regression_vs_noisy_matplotlib_300}
         \subcaption{Zoom on lags near 300.}
         \label{fig:app:xcorr_zoom300}
     \end{subfigure}
@@ -453,14 +463,14 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
 
 \begin{figure}[!ht]
     \centering
-    \includegraphics[width=\linewidth]{ant_pair_index_15_matplotlib.png}
+    \includegraphics[width=\linewidth]{graphics/ant_pair_index_15_matplotlib}
     \caption{An example observation pair from the synthetic ANT simulation. Each signal represents the noisy superposition of waves from multiple sources, as recorded at two different receivers.}
     \label{fig:ant_example_pair}
 \end{figure}
 
 \begin{figure}[!h]
     \centering
-    \includegraphics[width=0.8\textwidth]{ant_target_velocity_mean_mismatch_for_num_pairs_full_no_mir_white_0.1_to-3.5_hz_matplotlib.png}
+    \includegraphics[width=0.8\textwidth]{graphics/ant_target_velocity_mean_mismatch_for_num_pairs_full_no_mir_white_0.1_to-3.5_hz_matplotlib}
     \caption{Performance comparison showing target velocity mismatch error as a function of the number of signal pairs used. The Bayesian MIR method (red) converges to a lower overall error floor compared to the classical CCF method (purple).}
     \label{fig:ant_error_vs_num_pairs}
 \end{figure}
@@ -468,13 +478,13 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
 \begin{figure}[!h]
     \centering
     \begin{subfigure}[b]{.47\linewidth}
-        \includegraphics[width=\linewidth]{ant_estimated_ccf_full_right_half_matplotlib.png}
+        \includegraphics[width=\linewidth]{graphics/ant_estimated_ccf_full_right_half_matplotlib}
         \subcaption{The mean of the estimated Green's function computed by classical CCF stacking. The shaded region shows the empirical mean $\pm 1$ empirical standard deviation across the estimates.}
         \label{fig:ant_ccf_estimate}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{.47\linewidth}
-        \includegraphics[width=\linewidth]{ant_estimated_ir_full_mean_right_half_matplotlib.png}
+        \includegraphics[width=\linewidth]{graphics/ant_estimated_ir_full_mean_right_half_matplotlib}
         \subcaption{The posterior mean of the impulse response computed by our Bayesian model. The shaded region shows the posterior mean $\pm 1$ posterior standard deviation.}
         \label{fig:ant_mir_estimate}
     \end{subfigure}
@@ -486,7 +496,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
     %--- Top Plot: CCF Misfit Map ---
     \begin{subfigure}{0.75\textwidth}
         \centering
-        \includegraphics[width=\linewidth]{ant_estimated_cc_full_velocity_misfit_matplotlib.png}
+        \includegraphics[width=\linewidth]{graphics/ant_estimated_cc_full_velocity_misfit_matplotlib}
         \caption{Velocity misfit map for the classical CCF estimate. The green line is the ground-truth velocity.}
         \label{fig:ant_misfit_map_ccf}
     \end{subfigure}
@@ -496,7 +506,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
     %--- Bottom Plot: MIR Misfit Map ---
     \begin{subfigure}{0.75\textwidth}
         \centering
-        \includegraphics[width=\linewidth]{ant_estimated_mir_full_velocity_misfit_matplotlib.png}
+        \includegraphics[width=\linewidth]{graphics/ant_estimated_mir_full_velocity_misfit_matplotlib}
         \caption{Velocity misfit map for the Bayesian MIR estimate. The green line is the ground-truth velocity.}
         \label{fig:ant_misfit_map_mir}
     \end{subfigure}
@@ -511,7 +521,7 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
 
 \begin{figure}[!ht]
     \centering
-    \includegraphics[width=\linewidth]{ltv_experiment1_all_signals_matplotlib.png}
+    \includegraphics[width=\linewidth]{graphics/ltv_experiment1_all_signals_matplotlib}
     \caption{Synthetic data for the LTV system identification experiment. The figure shows: the input signal $f[n]$, the ground-truth time-varying impulse response $h[n, k]$, and the resulting noisy observed output signal $y[n]$.}
     \label{fig:ltv_experiment1_example_pair}
 \end{figure}
@@ -520,14 +530,14 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
     \centering
     \begin{subfigure}[b]{.47\linewidth}
         \centering
-        \includegraphics[height=3.8cm, keepaspectratio]{ltv_experiment1_fir_ground_truth_components_matplotlib.png}
+        \includegraphics[height=3.8cm, keepaspectratio]{graphics/ltv_experiment1_fir_ground_truth_components_matplotlib}
         \subcaption{The three distinct time-invariant FIR filters that serve as the basis for the LTV system.}
         \label{fig:ltv_experiment1_three_fir_components}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{.47\linewidth}
         \centering
-        \includegraphics[height=4cm, keepaspectratio]{ltv_experiment1_ltv_fir_ground_truth_3d_matplotlib.png}
+        \includegraphics[height=4cm, keepaspectratio]{graphics/ltv_experiment1_ltv_fir_ground_truth_3d_matplotlib}
         \subcaption{The final time-varying impulse response created by smoothly interpolating between the three base filters over time.}
         \label{fig:ltv_experiment1_ground_truth_ltv_3d}
     \end{subfigure}
@@ -538,13 +548,13 @@ The ground-truth time-varying FIR used $16$ taps and was formed by smoothly inte
 \begin{figure}[!ht]
     \centering
     \begin{subfigure}[b]{.47\linewidth}
-        \includegraphics[width=\linewidth]{ltv_single_plot_fir_fit_and_ground_truth_matplotlib.png}
+        \includegraphics[width=\linewidth]{graphics/ltv_single_plot_fir_fit_and_ground_truth_matplotlib}
         \subcaption{The estimated FIR (purple) and ground truth (orange) for a single time window. The smoothness of the estimate within this window is regularized by the Gaussian Process prior.}
         \label{fig:ltv_experiment1_single_window_fit}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{.47\linewidth}
-        \includegraphics[width=\linewidth]{ltv_stitched_plot_fir_fit_and_ground_truth_matplotlib.png}
+        \includegraphics[width=\linewidth]{graphics/ltv_stitched_plot_fir_fit_and_ground_truth_matplotlib}
         \subcaption{The complete LTV impulse response estimate (purple), created by averaging the predictions from all overlapping windows, shown against the ground truth (orange).}
         \label{fig:ltv_experiment1_stitched_fit}
     \end{subfigure}
