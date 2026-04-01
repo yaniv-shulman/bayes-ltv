@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This repository contains the source code and experimental notebooks for the paper, ["Bayesian Modeling and Estimation of Linear Time-Varying Systems using Neural Networks and Gaussian Processes](https://arxiv.org/abs/2507.12878)."
+This repository contains the source code and experimental notebooks for the paper, ["Bayesian Modeling and Estimation of Linear Time-Varying Systems using Neural Networks and Gaussian Processes](https://arxiv.org/abs/2507.12878)".
 
 ***
 
@@ -56,6 +56,7 @@ This project uses **Poetry** to manage dependencies and ensure a reproducible en
 
 * **Python 3.11**
 * **Poetry** (see [official documentation](https://python-poetry.org/docs/#installation) for installation instructions)
+* **Git LFS** to fetch the notebook files stored in the repository
 * An **NVIDIA GPU** with appropriate CUDA drivers is required to leverage `tensorflow-gpu` for the experiments.
 
 ### Installation
@@ -63,7 +64,11 @@ This project uses **Poetry** to manage dependencies and ensure a reproducible en
 The simplest way to set up the project on a Linux-based system is by using the provided configuration script.
 
 1.  Clone the repository
-2.  **Run the configuration script:**
+2.  Pull the Git LFS-managed notebook files:
+    ```bash
+    git lfs pull
+    ```
+3.  **Run the configuration script:**
     This script will configure the necessary environment variables, instruct Poetry to use Python 3.11, install all dependencies from the `pyproject.toml` file, and activate the virtual environment.
     ```bash
     source configure.sh
