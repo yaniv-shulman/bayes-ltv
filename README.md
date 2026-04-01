@@ -1,19 +1,19 @@
-# BayesLTV: Bayesian Modeling of Linear Time-Variant Systems
+# BayesLTV: Bayesian Modeling of Linear Time-Varying Systems
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This repository contains the source code and experimental notebooks for the paper, ["Bayesian Modeling and Estimation of Linear Time-Variant Systems using Neural Networks and Gaussian Processes](https://arxiv.org/abs/2507.12878)."
+This repository contains the source code and experimental notebooks for the paper, ["Bayesian Modeling and Estimation of Linear Time-Varying Systems using Neural Networks and Gaussian Processes](https://arxiv.org/abs/2507.12878)."
 
 ***
 
 ## Overview
 
-The identification of **Linear Time-Variant (LTV)** systems from input-output data is a fundamental yet challenging ill-posed inverse problem. This work introduces a unified Bayesian framework that models the system's impulse response, $h(t, \tau)$, as a stochastic process. We decompose the response into a posterior mean and a random fluctuation term, a formulation that provides a principled approach for quantifying uncertainty and naturally defines a new system class we term **Linear Time-Invariant in Expectation (LTIE)**.
+The identification of **Linear Time-Varying (LTV)** systems from input-output data is a fundamental yet challenging ill-posed inverse problem. This work introduces a unified Bayesian framework that models the system's impulse response, $h(t, \tau)$, as a stochastic process. We decompose the response into a posterior mean and a random fluctuation term, a formulation that provides a principled approach for quantifying uncertainty and naturally defines a new system class we term **Linear Time-Invariant in Expectation (LTIE)**.
 
 To perform inference, we leverage modern machine learning techniques, including Bayesian neural networks and Gaussian Processes, using scalable variational inference. This repository provides the tools to reproduce the key findings of our work.
 
 ### Key Features
-* A unified Bayesian framework ($h = \mu + \mathcal{E}$) for modeling LTV systems.
+* A unified Bayesian framework ($h = \mu + \mathcal{E}$) for modeling Linear Time-Varying systems.
 * Implementation of three distinct experiments demonstrating the framework's versatility.
 * Comparison against classical signal processing techniques in a simulated Ambient Noise Tomography (ANT) problem.
 * Use of amortized variational inference with a Gaussian Process prior to track a continuously varying LTV impulse response.
@@ -89,7 +89,7 @@ If not using the script, you can set up the environment manually with these Poet
 notebooks with the installed dependencies. Note that newer versions of Poetry may require you to install the poetry
 shell plugin first.
        ```bash
-       poetry shell
+       $(eval poetry env activate)
        ```
 ***
 
@@ -104,12 +104,12 @@ To regenerate the results from scratch, just rerun the notebooks.
 ## Citation
 
 If you use this work, please cite the paper:
-<pre><code class="language-bibtex">@misc{shulman2025bayesianmodelingestimationlinear,
-    title = {Bayesian Modeling and Estimation of Linear Time-Variant Systems using Neural Networks and Gaussian Processes},
-    author = {Yaniv Shulman},
-    year = {2025},
-    eprint = {2507.12878},
-    archivePrefix= {arXiv},
-    primaryClass = {stat.ML},
-    url = {https://arxiv.org/abs/2507.12878},
+<pre><code class="language-bibtex">@misc{shulman2026bayesianmodelingestimationlinear,
+      title={Bayesian Modeling and Estimation of Linear Time-Varying Systems using Neural Networks and Gaussian Processes}, 
+      author={Yaniv Shulman},
+      year={2026},
+      eprint={2507.12878},
+      archivePrefix={arXiv},
+      primaryClass={stat.ML},
+      url={https://arxiv.org/abs/2507.12878}, 
 }</code></pre>
